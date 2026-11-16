@@ -1,0 +1,18 @@
+{
+  "name": "jetstream-hooks",
+  "version": "0.0.0",
+  "description": "pre-commit hooks from cloudfeaster/jetstream (language: node hooks install this package)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "jetstream-markdownlint": "hooks/core/markdownlint.mjs",
+    "jetstream-mado-config": "hooks/core/mado-config.mjs"
+  },
+  "dependencies": {
+    "markdownlint-cli2": "0.24.0"
+  }
+}

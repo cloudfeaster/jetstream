@@ -1,15 +1,14 @@
-# mado config: every rule mado supports except MD013 (line length), MD024,
-# MD026 and MD033, matching the .markdownlint.json used in simonsdave/sarc.
+# Generated from .markdownlint.json by jetstream's mado-config-up-to-date
+# hook for mado 0.4.0 and markdownlint 0.42.0. Don't edit this
+# file: change .markdownlint.json and run pre-commit to regenerate it.
+# Off because markdownlint doesn't have them: MD002, MD006
+
 [lint]
-exclude = [
-]
 rules = [
   "MD001",
-  "MD002",
   "MD003",
   "MD004",
   "MD005",
-  "MD006",
   "MD007",
   "MD009",
   "MD010",
@@ -39,3 +38,36 @@ rules = [
   "MD046",
   "MD047",
 ]
+
+[lint.md003]
+style = "consistent"
+
+[lint.md004]
+style = "consistent"
+
+[lint.md007]
+indent = 4
+
+[lint.md025]
+level = 1
+
+[lint.md029]
+style = "one"
+
+[lint.md030]
+ul-single = 1
+ol-single = 1
+ul-multi = 1
+ol-multi = 1
+
+[lint.md035]
+style = "consistent"
+
+[lint.md036]
+punctuation = ".,;:!?。，；：！？"
+
+[lint.md041]
+level = 1
+
+[lint.md046]
+style = "consistent"

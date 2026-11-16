@@ -1,10 +1,13 @@
 ---
 # Hooks other repos use by adding jetstream to their .pre-commit-config.yaml.
 # Each hook installs its own pinned tool, so a consumer needs nothing but
-# pre-commit. Python tools are pinned as extras in pyproject.toml (where
-# Dependabot can bump them) and each hook installs only its own extra, and
-# other tools are downloaded by their hooks/ script, which checks a pinned
-# SHA-256 before running them.
+# pre-commit (plus Node for the markdownlint hooks). Where the pins live, so
+# Dependabot or the nightly check can bump them:
+#
+# - Python tools: one extra per hook in pyproject.toml (Dependabot, pip)
+# - Node tools: package.json (Dependabot, npm)
+# - Downloaded binaries: their hooks/ install script, with a pinned SHA-256
+#   (bin/check-tool-versions.sh, nightly)
 
 - id: yamllint
   name: yamllint
@@ -21,6 +24,24 @@
   language: python
   additional_dependencies: [".[shellcheck]"]
   types: [shell]
+
+- id: markdownlint
+  name: markdownlint
+  description: Lint Markdown with markdownlint-cli2, using the repo's .markdownlint.json.
+  entry: jetstream-markdownlint
+  language: node
+  types: [markdown]
+
+- id: mado-config-up-to-date
+  name: mado.toml matches .markdownlint.json
+  description: Generate mado.toml from .markdownlint.json; fails (after writing it) if it changed.
+  entry: jetstream-mado-config
+  language: node
+  pass_filenames: false
+  # Not just when .markdownlint.json or mado.toml change: a jetstream bump can
+  # change mado or markdownlint, and a repo with neither file still needs
+  # mado.toml created. Generating it takes well under a second.
+  always_run: true
 
 - id: mado
   name: mado

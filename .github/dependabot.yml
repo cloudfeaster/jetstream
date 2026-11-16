@@ -19,6 +19,22 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
+  # The Node tools the hooks install, pinned in package.json.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
