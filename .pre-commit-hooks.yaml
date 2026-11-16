@@ -1,0 +1,38 @@
+---
+# Hooks other repos use by adding jetstream to their .pre-commit-config.yaml.
+# Each hook installs its own pinned tool, so a consumer needs nothing but
+# pre-commit. Python tools are pinned as extras in pyproject.toml (where
+# Dependabot can bump them) and each hook installs only its own extra, and
+# other tools are downloaded by their hooks/ script, which checks a pinned
+# SHA-256 before running them.
+
+- id: yamllint
+  name: yamllint
+  description: Lint YAML with yamllint --strict, using the repo's .yamllint.
+  entry: yamllint --strict
+  language: python
+  additional_dependencies: [".[yamllint]"]
+  types: [yaml]
+
+- id: shellcheck
+  name: shellcheck
+  description: Lint shell scripts with shellcheck, using the repo's .shellcheckrc if present.
+  entry: shellcheck
+  language: python
+  additional_dependencies: [".[shellcheck]"]
+  types: [shell]
+
+- id: mado
+  name: mado
+  description: Lint Markdown with mado, using the repo's mado.toml.
+  entry: hooks/core/mado.sh
+  language: script
+  types: [markdown]
+
+- id: zizmor
+  name: zizmor
+  description: Check GitHub Actions workflows and actions for security issues with zizmor.
+  entry: zizmor --offline --no-progress
+  language: python
+  additional_dependencies: [".[zizmor]"]
+  files: ^\.github/workflows/[^/]+\.ya?ml$|(^|/)action\.ya?ml$

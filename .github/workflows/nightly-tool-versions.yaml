@@ -1,0 +1,33 @@
+---
+name: Nightly tool versions
+
+# Dependabot bumps the Python tools pinned in pyproject.toml, but can't see the
+# tools hooks/ scripts download (mado). This checks those pins against each
+# tool's latest release every night and fails when one is out of date.
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check tool versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check tool versions
+        env:
+          # Unauthenticated releases/latest calls are limited to 60 an hour
+          # per IP, and runners share IPs.
+          GH_TOKEN: ${{ github.token }}
+        run: bin/check-tool-versions.sh

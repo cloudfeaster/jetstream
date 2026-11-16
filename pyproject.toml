@@ -1,0 +1,24 @@
+# pre-commit installs this repo into each language: python hook's virtualenv
+# before adding the hook's additional_dependencies, so it must be installable.
+# It ships no Python code of its own.
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jetstream-hooks"
+version = "0.0.0"
+description = "pre-commit hooks from cloudfeaster/jetstream"
+requires-python = ">=3.10"
+
+# One extra per hook. Each hook's additional_dependencies installs only its own
+# extra, and keeping the pins here (not in .pre-commit-hooks.yaml) lets
+# Dependabot see and bump them.
+[project.optional-dependencies]
+yamllint = ["yamllint==1.38.0"]
+shellcheck = ["shellcheck-py==0.11.0.1"]
+zizmor = ["zizmor==1.32.0"]
+
+[tool.setuptools]
+packages = []
