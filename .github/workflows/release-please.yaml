@@ -1,0 +1,44 @@
+---
+# Opens and updates the release PR from the conventional commits on main.
+# Merging that PR makes the vX.Y.Z tag, the GitHub Release and the
+# CHANGELOG.md entry. It runs as the cloudfeaster-release App, not with
+# GITHUB_TOKEN, so the release PR gets the jetstream lint check: GitHub
+# starts no workflows from what GITHUB_TOKEN does. CONTRIBUTING.md
+# "Releasing" says how the App is set up.
+name: release-please
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    # The App's private key is a secret of this environment, which only main
+    # can deploy to.
+    environment: release
+    permissions: {}
+    steps:
+      - name: Get a token for the release App
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Only what release-please needs, even if the App is given more.
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Open or update the release PR, or tag the release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}

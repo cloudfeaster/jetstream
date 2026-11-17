@@ -2,7 +2,8 @@
 # Written by `jetstream sync` from the packs in [tool.jetstream]; don't edit.
 #
 # Each ecosystem is checked daily, waits 7 days after a release before
-# proposing it, and groups its updates into one security PR and one version PR.
+# proposing it (except jetstream's own releases), and groups its updates into
+# one security PR and one version PR.
 version: 2
 updates:
   - package-ecosystem: "uv"
@@ -11,6 +12,8 @@ updates:
       interval: "daily"
     cooldown:
       default-days: 7
+      exclude:
+        - "cloudfeaster-jetstream"
     groups:
       security-updates:
         applies-to: security-updates
