@@ -15,6 +15,7 @@ source = { editable = "." }
 dev = [
     { name = "hatchling" },
     { name = "pytest" },
+    { name = "tomlkit" },
 ]
 
 [package.metadata]
@@ -24,6 +25,7 @@ provides-extras = ["core", "python", "website"]
 dev = [
     { name = "hatchling", specifier = "==1.33.0" },
     { name = "pytest", specifier = "==9.2.0" },
+    { name = "tomlkit", specifier = "==0.15.2" },
 ]
 
 [[package]]

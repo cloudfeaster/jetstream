@@ -1,0 +1,63 @@
+# Binary tools that hatch_build.py downloads, verifies and bundles into
+# jetstream's wheel, so `uv sync` puts them in .venv/bin (decision 4).
+#
+# Bump a tool with `bin/update-binary.py <tool>`, which rewrites its version and
+# every platform's SHA-256 from the GitHub release. It takes each SHA-256 from
+# GitHub's digest for the asset and checks it against the project's own
+# `checksums` file in the same release. Don't edit SHA-256s by hand.
+#
+# Each tool's release asset is `asset` and the binary inside it is `member`,
+# with {version} and {platform} filled in; `checksums` can also use {asset}. The [<tool>.platforms] keys are the
+# wheel platform tags in hatch_build.py's SUPPORTED_PLATFORMS.
+
+[mado]
+repo = "akiomik/mado"
+version = "0.4.0"
+tag = "v{version}"
+asset = "mado-{platform}.tar.gz"
+member = "mado"
+checksums = "{asset}.sha256"
+
+[mado.platforms]
+linux_x86_64 = { platform = "Linux-gnu-x86_64", sha256 = "cb540bf0af659b7add3507f57bcd4025f2b6382d1509fb56bf9dd3f624eed380" }
+linux_aarch64 = { platform = "Linux-gnu-arm64", sha256 = "a9009893bdf59a81561f69a8de7d7860b3079ca148ec0a33f3ec3688d924c4e4" }
+macosx_11_0_arm64 = { platform = "macOS-arm64", sha256 = "8a646da7c4381580710594f3de54e65bc1b13e0610a6504d598e1f66f6ec9dff" }
+
+[d2]
+repo = "terrastruct/d2"
+version = "0.9.0"
+tag = "v{version}"
+asset = "d2-v{version}-{platform}.tar.gz"
+member = "d2-v{version}/bin/d2"
+checksums = "SHA256SUMS"
+
+[d2.platforms]
+linux_x86_64 = { platform = "linux-amd64", sha256 = "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9" }
+linux_aarch64 = { platform = "linux-arm64", sha256 = "ac2c028697199479acb321db1e3d68caee9f2ba492ed73caa3cd13f3829bf913" }
+macosx_11_0_arm64 = { platform = "macos-arm64", sha256 = "eaf6c0c143e56dd9fa97bfb6df25ea9c1ebce40245f056a0768cf1a6c15d3064" }
+
+[gitleaks]
+repo = "gitleaks/gitleaks"
+version = "8.30.1"
+tag = "v{version}"
+asset = "gitleaks_{version}_{platform}.tar.gz"
+member = "gitleaks"
+checksums = "gitleaks_{version}_checksums.txt"
+
+[gitleaks.platforms]
+linux_x86_64 = { platform = "linux_x64", sha256 = "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb" }
+linux_aarch64 = { platform = "linux_arm64", sha256 = "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080" }
+macosx_11_0_arm64 = { platform = "darwin_arm64", sha256 = "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5" }
+
+[trivy]
+repo = "aquasecurity/trivy"
+version = "0.76.2"
+tag = "v{version}"
+asset = "trivy_{version}_{platform}.tar.gz"
+member = "trivy"
+checksums = "trivy_{version}_checksums.txt"
+
+[trivy.platforms]
+linux_x86_64 = { platform = "Linux-64bit", sha256 = "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf" }
+linux_aarch64 = { platform = "Linux-ARM64", sha256 = "ab9d51f86e6a5fb936f605faff6b593ac51bc378fff4d3e8b9d58358b9c367c3" }
+macosx_11_0_arm64 = { platform = "macOS-ARM64", sha256 = "ae7ea358326960406b703c77b2ac490190797d80b306b5b50c2a27221da0a5b8" }
