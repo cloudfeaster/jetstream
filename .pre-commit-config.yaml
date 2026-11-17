@@ -1,6 +1,5 @@
 ---
-# jetstream's own hooks. Written by hand for now: once `jetstream sync`
-# exists, it generates this file from the packs in [tool.jetstream].
+# Written by `jetstream sync` from the packs in [tool.jetstream]; don't edit.
 #
 # Every hook is local and calls a tool jetstream installs in .venv/bin, so
 # .venv/bin must be on PATH (source cfg4dev.sh, or `uv run pre-commit` in CI).
@@ -11,6 +10,13 @@ default_stages: [pre-commit]
 repos:
   - repo: local
     hooks:
+      - id: jetstream-check
+        name: jetstream check
+        entry: jetstream check
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: no-commit-to-branch
         name: block commits directly to main
         entry: run-no-commit-to-branch.sh

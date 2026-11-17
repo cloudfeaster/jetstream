@@ -1,25 +1,42 @@
 #!/usr/bin/env bash
 #
-# Set up jetstream's own development environment:
+# Set up this repo's development environment:
 #
 #   source cfg4dev.sh
 #
-# uv installs jetstream from this working tree (editable), and the build hook
-# runs for that too, so jetstream develops against itself: its tools land in
-# .venv/bin, and its git hooks call them. jetstream sync and cfg4dev.local.sh
-# join this as they're built.
+# Written by `jetstream sync` (core pack). Put the repo's own setup in
+# cfg4dev.local.sh, which this sources last.
+#
+# uv sync installs jetstream and every tool it pins into .venv, jetstream sync
+# writes jetstream's files into the repo, and pre-commit install sets up the
+# git hooks, which call the tools in .venv/bin.
 
 pushd "$(git rev-parse --show-toplevel)" > /dev/null || return 1
 
 uv self update || true
 
 if uv sync; then
-    if [ -z "${VIRTUAL_ENV}" ]; then
+    if [ -z "${VIRTUAL_ENV:-}" ]; then
         # shellcheck disable=SC1091
         source ./.venv/bin/activate
     fi
+
+    # jetstream sync can change pyproject.toml (jetstream's keys), and then
+    # .venv has to catch up.
+    _jetstream_pyproject="$(cksum < pyproject.toml)"
+    jetstream sync
+    if [ "$(cksum < pyproject.toml)" != "${_jetstream_pyproject}" ]; then
+        uv sync
+    fi
+    unset _jetstream_pyproject
+
     # the pre-commit and commit-msg hooks (default_install_hook_types)
     pre-commit install
+
+    if [ -f cfg4dev.local.sh ]; then
+        # shellcheck disable=SC1091
+        source ./cfg4dev.local.sh
+    fi
 fi
 
 popd > /dev/null || return 1

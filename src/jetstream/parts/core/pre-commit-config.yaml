@@ -1,0 +1,101 @@
+---
+# Written by `jetstream sync` from the packs in [tool.jetstream]; don't edit.
+#
+# Every hook is local and calls a tool jetstream installs in .venv/bin, so
+# .venv/bin must be on PATH (source cfg4dev.sh, or `uv run pre-commit` in CI).
+default_install_hook_types: [pre-commit, commit-msg]
+# Only the dco hook runs at commit-msg; the rest run once, at pre-commit.
+default_stages: [pre-commit]
+
+repos:
+  - repo: local
+    hooks:
+      - id: jetstream-check
+        name: jetstream check
+        entry: jetstream check
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: no-commit-to-branch
+        name: block commits directly to main
+        entry: run-no-commit-to-branch.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: dco
+        name: DCO sign-off
+        entry: run-dco.sh
+        language: system
+        stages: [commit-msg]
+
+      - id: lockfile
+        name: uv.lock is up to date
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: '^(pyproject\.toml|uv\.lock)$'
+
+      - id: yamllint
+        name: yamllint
+        entry: run-yamllint.sh
+        language: system
+        pass_filenames: false
+        types: [yaml]
+
+      - id: json-lint
+        name: json lint
+        entry: run-json-lint.sh
+        language: system
+        pass_filenames: false
+        types: [json]
+
+      - id: mado
+        name: mado (Markdown lint)
+        entry: run-mado.sh
+        language: system
+        pass_filenames: false
+        types: [markdown]
+
+      - id: shellcheck
+        name: shellcheck
+        entry: run-shellcheck.sh
+        language: system
+        pass_filenames: false
+        types: [shell]
+
+      - id: zizmor
+        name: zizmor (GitHub Actions audit)
+        entry: run-zizmor.sh
+        language: system
+        pass_filenames: false
+        files: '^\.github/'
+
+      - id: check-svg
+        name: SVG diagrams match their D2 sources
+        entry: run-check-svg.sh
+        language: system
+        pass_filenames: false
+        files: '\.(svg|d2)$'
+
+      - id: gitleaks
+        name: gitleaks (secrets)
+        entry: run-gitleaks.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: trivy
+        name: trivy (vulnerable dependencies)
+        entry: run-trivy.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: unit-tests
+        name: unit tests
+        entry: run-unit-tests.sh
+        language: system
+        pass_filenames: false
+        always_run: true

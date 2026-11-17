@@ -13,7 +13,9 @@ requires-python = "==3.13.*"
 authors = [
     {name = "Cloudfeaster Solutions Inc."},
 ]
-dependencies = []
+dependencies = [
+    "tomlkit==0.15.2",  # jetstream sync edits pyproject.toml, keeping its comments and formatting
+]
 
 [project.optional-dependencies]
 # One extra per pack. Each pack's Python tools are exact-pinned here;
@@ -39,7 +41,6 @@ Issues = "https://github.com/cloudfeaster/jetstream/issues"
 dev = [
     "cloudfeaster-jetstream[core]",  # jetstream checks itself with its own core pack
     "hatchling==1.33.0",  # for tests of hatch_build.py; keep in step with [build-system]
-    "tomlkit==0.15.2",  # for bin/update-binary.py
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -62,8 +63,10 @@ cache-keys = [
     {file = "src/jetstream/bin/**"},
     {file = "package.json"},
     {file = "package-lock.json"},
-    {file = "src/jetstream/config/**"},
 ]
+
+[tool.jetstream]
+packs = ["core"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
