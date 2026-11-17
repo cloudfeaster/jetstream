@@ -1,19 +1,35 @@
-"""Build hook that makes jetstream's wheel platform-specific.
+"""Build hook that bundles jetstream's binary tools into its wheel.
 
-jetstream's wheel bundles pinned binary tools (and, for the website pack,
-Node tools), so it is tagged ``py3-none-<platform>``: built once per release
-per platform, then served from uv's cache whatever the Python version.
+For this machine's platform, the hook downloads each binary tool pinned in
+``binaries.toml``, checks its SHA-256 and adds it to the wheel's scripts, so
+installing the wheel puts it in ``.venv/bin`` (decision 4). The wheel is
+tagged ``py3-none-<platform>``: built once per release per platform, then
+served from uv's cache whatever the Python version.
 
-Downloading and verifying the binaries, and ``npm ci`` for the website pack,
-come in later changes. Any failure stops the build with a one-line
-``*** jetstream: ...`` message rather than a traceback.
+Downloads are kept in ``$XDG_CACHE_HOME/jetstream/downloads`` (default
+``~/.cache``), named by SHA-256, so rebuilding jetstream's own editable
+install doesn't download them again. A cached file is checked again before
+it's used.
+
+``npm ci`` for the website pack comes in a later change. Any failure stops
+the build with a one-line ``*** jetstream: ...`` message rather than a
+traceback.
 """
 
 from __future__ import annotations
 
+import hashlib
+import os
 import platform
+import shutil
 import sys
-from typing import Any
+import tarfile
+import tempfile
+import tomllib
+import urllib.error
+import urllib.request
+from pathlib import Path
+from typing import Any, NamedTuple, NoReturn
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -24,8 +40,12 @@ SUPPORTED_PLATFORMS: dict[tuple[str, str], str] = {
     ("darwin", "arm64"): "macosx_11_0_arm64",
 }
 
+PINS_FILE = "binaries.toml"
+DOWNLOAD_TIMEOUT_SECONDS = 60
+CHUNK_SIZE = 1024 * 1024
 
-def fail(message: str) -> None:
+
+def fail(message: str) -> NoReturn:
     """Stop the build with a one-line message instead of a traceback."""
     sys.exit(f"*** jetstream: {message}")
 
@@ -41,14 +61,139 @@ def platform_tag(system: str | None = None, machine: str | None = None) -> str:
     return tag
 
 
+class Binary(NamedTuple):
+    """One pinned binary tool, resolved for one platform.
+
+    A NamedTuple, not a dataclass: hatchling loads this file without adding
+    it to sys.modules, which dataclasses need.
+    """
+
+    name: str
+    version: str
+    url: str
+    member: str
+    sha256: str
+
+
+def load_binaries(pins_path: Path, tag: str) -> list[Binary]:
+    """Read the pins in ``pins_path`` and resolve each tool for platform ``tag``."""
+    try:
+        pins = tomllib.loads(pins_path.read_text())
+    except (OSError, tomllib.TOMLDecodeError) as e:
+        fail(f"can't read {pins_path.name}: {e}")
+
+    binaries = []
+    for name, pin in pins.items():
+        try:
+            version = pin["version"]
+            platform_pin = pin["platforms"].get(tag)
+            if platform_pin is None:
+                fail(f"{pins_path.name} has no {tag} pin for {name}")
+            fields = {"version": version, "platform": platform_pin["platform"]}
+            tag_name = pin["tag"].format(**fields)
+            asset = pin["asset"].format(**fields)
+            binaries.append(
+                Binary(
+                    name=name,
+                    version=version,
+                    url=f"https://github.com/{pin['repo']}/releases/download/{tag_name}/{asset}",
+                    member=pin["member"].format(**fields),
+                    sha256=platform_pin["sha256"].lower(),
+                ),
+            )
+        except (KeyError, TypeError, AttributeError) as e:
+            fail(f"{pins_path.name}: bad pin for {name} ({e!r})")
+    return binaries
+
+
+def default_cache_dir() -> Path:
+    """Return where downloads are cached, following the XDG base directory spec."""
+    cache_home = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
+    return Path(cache_home) / "jetstream" / "downloads"
+
+
+def sha256_of(path: Path) -> str:
+    """Return the hex SHA-256 of the file at ``path``."""
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        while chunk := f.read(CHUNK_SIZE):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def download(binary: Binary, cache_dir: Path) -> Path:
+    """Return the path of ``binary``'s release asset in ``cache_dir``, downloading it if needed.
+
+    The file is only kept, and only returned, if its SHA-256 matches the pin.
+    """
+    cached = cache_dir / binary.sha256
+    if cached.is_file() and sha256_of(cached) == binary.sha256:
+        return cached
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    fd, partial_name = tempfile.mkstemp(dir=cache_dir, prefix=".partial-")
+    partial = Path(partial_name)
+    try:
+        digest = hashlib.sha256()
+        # The URL is always https (file in tests), which is what S310 checks for.
+        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(binary.url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:  # noqa: S310
+            while chunk := response.read(CHUNK_SIZE):
+                digest.update(chunk)
+                out.write(chunk)
+        if digest.hexdigest() != binary.sha256:
+            fail(
+                f"SHA-256 mismatch for {binary.name} {binary.version} from {binary.url}: "
+                f"expected {binary.sha256}, got {digest.hexdigest()}",
+            )
+        partial.replace(cached)
+    except (urllib.error.URLError, OSError) as e:
+        reason = getattr(e, "reason", None) or e
+        fail(f"can't download {binary.name} {binary.version} from {binary.url}: {reason}")
+    finally:
+        partial.unlink(missing_ok=True)
+    return cached
+
+
+def extract(binary: Binary, archive: Path, dest_dir: Path) -> Path:
+    """Extract ``binary``'s executable from its ``.tar.gz`` ``archive`` into ``dest_dir``."""
+    dest = dest_dir / binary.name
+    try:
+        with tarfile.open(archive, "r:gz") as tar:
+            member = tar.getmember(binary.member)
+            source = tar.extractfile(member) if member.isfile() else None
+            if source is None:
+                fail(f"{binary.member} in {binary.url} isn't a regular file")
+            with source, dest.open("wb") as out:
+                shutil.copyfileobj(source, out)
+    except KeyError:
+        fail(f"{binary.url} has no {binary.member}")
+    except (tarfile.TarError, OSError) as e:
+        fail(f"can't extract {binary.member} from {binary.url}: {e}")
+    dest.chmod(0o755)
+    return dest
+
+
 class JetstreamBuildHook(BuildHookInterface):
-    """Tag the wheel ``py3-none-<platform>``."""
+    """Tag the wheel ``py3-none-<platform>`` and bundle the pinned binaries."""
 
     PLUGIN_NAME = "custom"
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:  # noqa: ARG002
-        """Set the wheel tag before hatchling builds the wheel."""
+        """Download, verify and extract the binaries before hatchling builds the wheel."""
         if self.target_name != "wheel":
             return
+        tag = platform_tag()
         build_data["pure_python"] = False
-        build_data["tag"] = f"py3-none-{platform_tag()}"
+        build_data["tag"] = f"py3-none-{tag}"
+
+        self._work_dir = Path(tempfile.mkdtemp(prefix="jetstream-build-"))
+        cache_dir = default_cache_dir()
+        for binary in load_binaries(Path(self.root) / PINS_FILE, tag):
+            executable = extract(binary, download(binary, cache_dir), self._work_dir)
+            build_data["shared_scripts"][str(executable)] = binary.name
+
+    def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:  # noqa: ARG002
+        """Remove the extracted binaries once the wheel is written."""
+        work_dir = getattr(self, "_work_dir", None)
+        if work_dir is not None:
+            shutil.rmtree(work_dir, ignore_errors=True)

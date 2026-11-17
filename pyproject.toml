@@ -33,6 +33,7 @@ Issues = "https://github.com/cloudfeaster/jetstream/issues"
 dev = [
     "hatchling==1.33.0",  # for tests of hatch_build.py; keep in step with [build-system]
     "pytest==9.2.0",
+    "tomlkit==0.15.2",  # for bin/update-binary.py
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -49,6 +50,7 @@ exclude-newer = "7 days"
 cache-keys = [
     {file = "pyproject.toml"},
     {file = "hatch_build.py"},
+    {file = "binaries.toml"},
     {file = "package.json"},
     {file = "package-lock.json"},
     {file = "src/jetstream/config/**"},
