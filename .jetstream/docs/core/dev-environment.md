@@ -16,7 +16,7 @@ source cfg4dev.sh
 1. runs `uv sync`, which builds `.venv` and installs the repo's dependencies, jetstream, and every tool jetstream pins, including the downloaded binaries, into `.venv/bin`;
 1. activates `.venv`, so the tools are on `PATH`;
 1. runs `jetstream sync`, and `uv sync` again if that changed `pyproject.toml`;
-1. runs `pre-commit install`, for the `pre-commit` and `commit-msg` git hooks;
+1. runs `pre-commit install`, for the `pre-commit` git hook;
 1. sources `cfg4dev.local.sh`, if the repo has one, for the repo's own setup.
 
 Run it again whenever you like; it only changes what's out of date. In VS Code, every new terminal runs it for you (`.vscode/terminal-init.sh`). CI doesn't use it: the `jetstream-lint.yaml` workflow runs `uv sync --locked` itself.
@@ -46,7 +46,6 @@ The pre-commit hooks, which CI also runs (`pre-commit run --all-files`), all cal
 |---|---|
 | `jetstream-check` | the files jetstream owns are what it writes |
 | `no-commit-to-branch` | you aren't committing on `main` |
-| `dco` | the commit has a DCO sign-off ([dco.md](dco.md)); at `commit-msg` |
 | `lockfile` | `uv.lock` matches `pyproject.toml` |
 | `yamllint`, `json-lint`, `mado`, `shellcheck` | YAML, JSON ([json.md](json.md)), Markdown ([markdown.md](markdown.md)) and shell scripts |
 | `zizmor` | GitHub Actions workflows ([github-actions.md](github-actions.md)) |

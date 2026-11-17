@@ -92,9 +92,9 @@ def test_core_owns_its_files() -> None:
         "cfg4dev.sh",
         "mado.toml",
     } | {f".jetstream/docs/core/{doc.name}" for doc in (ROOT / "src" / "jetstream" / "docs" / "core").glob("*.md")}
-    assert ".jetstream/docs/core/dco.md" in want.files
+    assert ".jetstream/docs/core/markdown.md" in want.files
     assert want.files["cfg4dev.sh"].executable
-    assert want.files[".jetstream/docs/core/dco.md"].content.decode().startswith(sync.DOC_HEADER + "# Developer Certificate of Origin")
+    assert want.files[".jetstream/docs/core/markdown.md"].content.decode().startswith(sync.DOC_HEADER + "# Markdown")
     assert "entry: jetstream check" in want.files[".pre-commit-config.yaml"].content.decode()
     assert want.gitignore_block.startswith(sync.GITIGNORE_START + "\n")
     assert want.gitignore_block.endswith(sync.GITIGNORE_END + "\n")
@@ -175,18 +175,18 @@ def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Pat
 
 def test_sync_replaces_the_docs_as_a_whole(synced: Path) -> None:
     docs: Path = synced / ".jetstream" / "docs"
-    (docs / "core" / "dco.md").write_text("edited\n")
+    (docs / "core" / "markdown.md").write_text("edited\n")
     (docs / "core" / "old.md").write_text("# Old\n")
     (docs / "retired").mkdir()
     (docs / "retired" / "gone.md").write_text("# Gone\n")
     assert sync.check(synced) == [
-        ".jetstream/docs/core/dco.md differs from what jetstream writes",
+        ".jetstream/docs/core/markdown.md differs from what jetstream writes",
         ".jetstream/docs/core/old.md isn't written by this jetstream release",
         ".jetstream/docs/retired/gone.md isn't written by this jetstream release",
     ]
 
     assert sync.sync(synced) == [
-        ".jetstream/docs/core/dco.md",
+        ".jetstream/docs/core/markdown.md",
         ".jetstream/docs/core/old.md (deleted)",
         ".jetstream/docs/retired/gone.md (deleted)",
     ]

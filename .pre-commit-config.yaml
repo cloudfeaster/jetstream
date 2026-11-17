@@ -3,8 +3,8 @@
 #
 # Every hook is local and calls a tool jetstream installs in .venv/bin, so
 # .venv/bin must be on PATH (source cfg4dev.sh, or `uv run pre-commit` in CI).
-default_install_hook_types: [pre-commit, commit-msg]
-# Only the dco hook runs at commit-msg; the rest run once, at pre-commit.
+# Hooks run only at pre-commit, even in a clone that still has the
+# commit-msg hook an earlier release installed.
 default_stages: [pre-commit]
 
 repos:
@@ -23,12 +23,6 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-
-      - id: dco
-        name: DCO sign-off
-        entry: run-dco.sh
-        language: system
-        stages: [commit-msg]
 
       - id: lockfile
         name: uv.lock is up to date
