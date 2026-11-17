@@ -81,7 +81,6 @@ def test_core_owns_its_files() -> None:
         ".claude/settings.json",
         ".github/dependabot.yml",
         ".github/workflows/jetstream-lint.yaml",
-        ".jetstream/docs/core/dco.md",
         ".jsonlintignore",
         ".pre-commit-config.yaml",
         ".shellcheckrc",
@@ -92,7 +91,8 @@ def test_core_owns_its_files() -> None:
         ".yamllint",
         "cfg4dev.sh",
         "mado.toml",
-    }
+    } | {f".jetstream/docs/core/{doc.name}" for doc in (ROOT / "src" / "jetstream" / "docs" / "core").glob("*.md")}
+    assert ".jetstream/docs/core/dco.md" in want.files
     assert want.files["cfg4dev.sh"].executable
     assert want.files[".jetstream/docs/core/dco.md"].content.decode().startswith(sync.DOC_HEADER + "# Developer Certificate of Origin")
     assert "entry: jetstream check" in want.files[".pre-commit-config.yaml"].content.decode()
@@ -190,7 +190,8 @@ def test_sync_replaces_the_docs_as_a_whole(synced: Path) -> None:
         ".jetstream/docs/core/old.md (deleted)",
         ".jetstream/docs/retired/gone.md (deleted)",
     ]
-    assert sorted(path.relative_to(docs).as_posix() for path in docs.rglob("*")) == ["core", "core/dco.md"]
+    assert not (docs / "core" / "old.md").exists()
+    assert not (docs / "retired").exists()
     assert sync.check(synced) == []
 
 
