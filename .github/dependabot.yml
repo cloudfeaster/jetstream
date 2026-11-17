@@ -13,7 +13,7 @@ updates:
     cooldown:
       default-days: 7
       exclude:
-        - "cloudfeaster-jetstream"
+        - "cloudfeaster-jetstream*"  # Dependabot names it with its extras, e.g. cloudfeaster-jetstream[core]
     groups:
       security-updates:
         applies-to: security-updates
