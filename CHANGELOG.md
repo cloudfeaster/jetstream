@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/cloudfeaster/jetstream/compare/v0.1.1...v0.1.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* skip Dependabot's cooldown for jetstream with any extras ([#23](https://github.com/cloudfeaster/jetstream/issues/23)) ([ca5bcb2](https://github.com/cloudfeaster/jetstream/commit/ca5bcb21c811fbbf8ceef38273ad0f143e6be96d)), closes [#1](https://github.com/cloudfeaster/jetstream/issues/1)
+
 ## [0.1.1](https://github.com/cloudfeaster/jetstream/compare/v0.1.0...v0.1.1) (2026-11-17)
 
 
