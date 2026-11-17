@@ -11,12 +11,14 @@
 # writes jetstream's files into the repo, and pre-commit install sets up the
 # git hooks, which call the tools in .venv/bin.
 
-pushd "$(git rev-parse --show-toplevel)" > /dev/null || return 1
+_jetstream_toplevel="$(git rev-parse --show-toplevel)" || return 1
+pushd "${_jetstream_toplevel}" > /dev/null || return 1
+unset _jetstream_toplevel
 
 uv self update || true
 
 if uv sync; then
-    if [ -z "${VIRTUAL_ENV:-}" ]; then
+    if [[ -z "${VIRTUAL_ENV:-}" ]]; then
         # shellcheck disable=SC1091
         source ./.venv/bin/activate
     fi
@@ -25,15 +27,16 @@ if uv sync; then
     # .venv has to catch up.
     _jetstream_pyproject="$(cksum < pyproject.toml)"
     jetstream sync
-    if [ "$(cksum < pyproject.toml)" != "${_jetstream_pyproject}" ]; then
+    _jetstream_pyproject_synced="$(cksum < pyproject.toml)"
+    if [[ "${_jetstream_pyproject_synced}" != "${_jetstream_pyproject}" ]]; then
         uv sync
     fi
-    unset _jetstream_pyproject
+    unset _jetstream_pyproject _jetstream_pyproject_synced
 
     # the pre-commit and commit-msg hooks (default_install_hook_types)
     pre-commit install
 
-    if [ -f cfg4dev.local.sh ]; then
+    if [[ -f cfg4dev.local.sh ]]; then
         # shellcheck disable=SC1091
         source ./cfg4dev.local.sh
     fi
