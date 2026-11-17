@@ -22,7 +22,47 @@ pytest
 
 ## Making a change
 
-Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit signed, open a draft pull request, and squash-merge once `jetstream lint` passes. Commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`); releases and `CHANGELOG.md` will be generated from them.
+Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit signed, open a draft pull request, and squash-merge once `jetstream lint` passes. Commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`); releases and `CHANGELOG.md` are generated from them (see [Releasing](#releasing)).
+
+## Releasing
+
+Releases are cut by [release-please](https://github.com/googleapis/release-please), from the Conventional Commits on `main`:
+
+1. Every push to `main` runs the `release-please` workflow. It opens, or updates, a release PR from the `release-please--branches--main` branch. The PR sets the next version in `pyproject.toml` and `uv.lock`, and adds the commits since the last release to `CHANGELOG.md`.
+1. Merge the release PR like any other, once `jetstream lint` passes. The workflow then tags the merge commit `vX.Y.Z` and creates the GitHub Release.
+
+The commits decide the version. Before 1.0.0, a breaking change (`feat!:`) or a `feat:` bumps the minor version, and a `fix:` bumps the patch version. From 1.0.0 on, a breaking change bumps the major version. A change is breaking if a repo must change something it owns to take the release. Tags are never moved or deleted (decision 9 in #1).
+
+### Setting up the release App
+
+release-please acts as a GitHub App, `cloudfeaster-release`, rather than with the workflow's `GITHUB_TOKEN`, because GitHub starts no workflows from anything `GITHUB_TOKEN` does. The release PR would then never get the `jetstream lint` check that the org ruleset requires, and could never merge. One App serves every repo that releases.
+
+Do these as an org owner, in the browser:
+
+1. **Create the App** at <https://github.com/organizations/cloudfeaster/settings/apps/new>:
+    - GitHub App name: `cloudfeaster-release`
+    - Homepage URL: `https://github.com/cloudfeaster/jetstream`. It's required but unused.
+    - Webhook: untick **Active**.
+    - Repository permissions (leave everything else at **No access**):
+        - Contents: **Read and write**, for the release branch and its commit, tags and GitHub Releases
+        - Pull requests: **Read and write**, to open and update the release PR
+        - Issues: **Read and write**, for the `autorelease: pending` and `autorelease: tagged` labels release-please puts on the PR
+        - Metadata: **Read-only** (required)
+    - Where can this GitHub App be installed? **Only on this account**.
+    - Click **Create GitHub App**.
+1. **Copy the client ID and create a private key.** Note the **Client ID** (`Iv23li...`), then click **Private keys → Generate a private key**. That `.pem` file is the App's password.
+1. **Install the App:** **Install App → Install** next to `cloudfeaster`, then **Only select repositories → jetstream**. Add more repos here later, as they start releasing.
+1. **Create the `release` environment** in the repo: **Settings → Environments → New environment**, named `release`. Under **Deployment branches and tags**, choose **Selected branches and tags** and add `main`. Only runs from `main` can then read the key.
+1. **Give the environment the client ID and key:**
+
+    ```bash
+    gh variable set RELEASE_APP_CLIENT_ID -R cloudfeaster/jetstream --env release --body 'Iv23li...'
+    gh secret set RELEASE_APP_PRIVATE_KEY -R cloudfeaster/jetstream --env release < ~/Downloads/cloudfeaster-release.*.private-key.pem
+    ```
+
+    For another repo, repeat steps 4 and 5 with its name. Keep the `.pem` somewhere safe until every repo that needs it has a copy, then delete it. A new key can always be generated on the App's page.
+
+The workflow asks for a token with only the Contents, Issues and Pull requests permissions, so it stays that narrow even if the App is given more.
 
 ## Conventions
 

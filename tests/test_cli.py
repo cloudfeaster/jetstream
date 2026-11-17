@@ -1,5 +1,7 @@
 """Tests for the ``jetstream`` command's argument handling."""
 
+from importlib.metadata import version
+
 import pytest
 
 from jetstream import cli
@@ -20,4 +22,5 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
         cli.main(["--version"])
     assert exc_info.value.code == 0
-    assert capsys.readouterr().out.startswith("jetstream 0.0.0")
+    # release-please bumps the version, so don't hard-code it
+    assert capsys.readouterr().out.startswith(f"jetstream {version('cloudfeaster-jetstream')}")
