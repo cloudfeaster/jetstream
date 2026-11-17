@@ -19,6 +19,9 @@ wheels = [
 name = "cloudfeaster-jetstream"
 version = "0.0.0"
 source = { editable = "." }
+dependencies = [
+    { name = "tomlkit" },
+]
 
 [package.optional-dependencies]
 core = [
@@ -33,7 +36,6 @@ core = [
 dev = [
     { name = "cloudfeaster-jetstream", extra = ["core"] },
     { name = "hatchling" },
-    { name = "tomlkit" },
 ]
 
 [package.metadata]
@@ -41,6 +43,7 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'core'", specifier = "==4.7.0" },
     { name = "pytest", marker = "extra == 'core'", specifier = "==9.2.0" },
     { name = "shellcheck-py", marker = "extra == 'core'", specifier = "==0.11.0.1" },
+    { name = "tomlkit", specifier = "==0.15.2" },
     { name = "yamllint", marker = "extra == 'core'", specifier = "==1.38.0" },
     { name = "zizmor", marker = "extra == 'core'", specifier = "==1.32.0" },
 ]
@@ -50,7 +53,6 @@ provides-extras = ["core", "python", "website"]
 dev = [
     { name = "cloudfeaster-jetstream", extras = ["core"] },
     { name = "hatchling", specifier = "==1.33.0" },
-    { name = "tomlkit", specifier = "==0.15.2" },
 ]
 
 [[package]]
