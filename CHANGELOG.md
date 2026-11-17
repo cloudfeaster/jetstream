@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/cloudfeaster/jetstream/compare/v0.1.0...v0.1.1) (2026-11-17)
+
+
+### Documentation
+
+* give the release PR's real branch name ([#21](https://github.com/cloudfeaster/jetstream/issues/21)) ([bdbe260](https://github.com/cloudfeaster/jetstream/commit/bdbe2604b5fa9f788d54449871609ec77e59c8af))
+
 ## 0.1.0 (2026-11-17)
 
 
