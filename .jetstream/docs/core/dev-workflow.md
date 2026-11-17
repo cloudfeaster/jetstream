@@ -15,7 +15,7 @@ An org ruleset applies the same rules to every repo's default branch, and no one
 
 No approving review is required, so a pull request can merge as soon as `jetstream lint` passes. Locally, the `no-commit-to-branch` pre-commit hook stops a commit on `main` before the push would be rejected.
 
-Every commit also needs a DCO sign-off ([dco.md](dco.md)), and commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`).
+Commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`).
 
 ## Signing commits
 
@@ -40,7 +40,7 @@ To sign with an existing SSH key instead (`gpg.format = ssh`), see [GitHub's doc
     git switch -c feat/add-export
     ```
 
-1. **Commit**, signed off: `git commit -s`. The pre-commit hooks run first (see [dev-environment.md](dev-environment.md)); if one fails, fix what it reports and commit again.
+1. **Commit**. The pre-commit hooks run first (see [dev-environment.md](dev-environment.md)); if one fails, fix what it reports and commit again.
 
 1. **Push, and open a draft pull request** right away. `jetstream lint` runs on pull requests, so an early draft gets CI on every push:
 

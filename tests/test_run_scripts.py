@@ -17,7 +17,6 @@ import pytest
 ROOT: Final[Path] = Path(__file__).parent.parent
 VENV_BIN: Final[Path] = Path(sys.prefix) / "bin"
 CORE_FILES: Final[Path] = ROOT / "src" / "jetstream" / "files" / "core"
-AUTHOR: Final[str] = "A Developer <dev@example.com>"
 # run(repo, "run-<tool>.sh", *args) runs a script in repo.
 type Run = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -264,68 +263,6 @@ def test_d2_compile_fails_a_source_outside_images_d2(repo: Path, run: Run) -> No
     result: subprocess.CompletedProcess[str] = run(repo, "run-d2-compile.sh")
     assert result.returncode == 1
     assert "outside an images/d2 directory: docs/flow.d2" in result.stderr
-
-
-# --- dco
-
-
-def test_dco_passes_a_signed_off_message(repo: Path, tmp_path: Path, run: Run) -> None:
-    message: Path = tmp_path / "COMMIT_EDITMSG"
-    message.write_text(f"feat: a change\n\nSigned-off-by: {AUTHOR}\n")
-    assert run(repo, "run-dco.sh", str(message)).returncode == 0
-
-
-@pytest.mark.parametrize(
-    "trailer",
-    ["", "Signed-off-by: Someone Else <else@example.com>\n", f"Signed-off-by: {AUTHOR} extra\n"],
-)
-def test_dco_fails_without_the_authors_sign_off(repo: Path, tmp_path: Path, run: Run, trailer: str) -> None:
-    message: Path = tmp_path / "COMMIT_EDITMSG"
-    message.write_text(f"feat: a change\n\n{trailer}")
-    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", str(message))
-    assert result.returncode == 1
-    assert f"'Signed-off-by: {AUTHOR}'" in result.stderr
-
-
-def commit(repo: Path, subject: str, *, signed: bool, author: str = AUTHOR) -> None:
-    body: str = f"{subject}\n\nSigned-off-by: {author}\n" if signed else f"{subject}\n"
-    git(repo, "commit", "--quiet", "--allow-empty", f"--author={author}", "-m", body)
-
-
-def test_dco_commits_passes_when_every_commit_is_signed_off(repo: Path, run: Run) -> None:
-    commit(repo, "base", signed=False)
-    base: str = git(repo, "rev-parse", "HEAD").strip()
-    commit(repo, "one", signed=True)
-    commit(repo, "two by someone else", signed=True, author="Other Person <other@example.com>")
-    assert run(repo, "run-dco.sh", "--commits", f"{base}..HEAD").returncode == 0
-
-
-def test_dco_commits_names_each_unsigned_commit(repo: Path, run: Run) -> None:
-    commit(repo, "base", signed=False)
-    base: str = git(repo, "rev-parse", "HEAD").strip()
-    commit(repo, "signed", signed=True)
-    commit(repo, "unsigned", signed=False)
-    git(repo, "commit", "--quiet", "--allow-empty", "--author=Other Person <other@example.com>", "-m", f"wrong signer\n\nSigned-off-by: {AUTHOR}\n")
-    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", "--commits", f"{base}..HEAD")
-    assert result.returncode == 1
-    assert " unsigned: no 'Signed-off-by: A Developer <dev@example.com>'" in result.stderr
-    assert " wrong signer: no 'Signed-off-by: Other Person <other@example.com>'" in result.stderr
-    assert " signed:" not in result.stderr
-    assert "2 commit(s) without a DCO sign-off" in result.stderr
-
-
-def test_dco_commits_fails_a_bad_revision_range(repo: Path, run: Run) -> None:
-    commit(repo, "base", signed=True)
-    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", "--commits", "no-such-base..HEAD")
-    assert result.returncode != 0
-    assert "no-such-base" in result.stderr
-
-
-@pytest.mark.parametrize("args", [[], ["--commits"], ["a", "b"]])
-def test_dco_usage(repo: Path, run: Run, args: list[str]) -> None:
-    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", *args)
-    assert result.returncode == 1
-    assert "usage:" in result.stderr
 
 
 # --- no-commit-to-branch

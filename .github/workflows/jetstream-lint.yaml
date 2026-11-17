@@ -4,7 +4,7 @@
 # One job, "jetstream lint", so the org ruleset can require one stable
 # status check. It runs what a developer's git hooks run (decision 10):
 # uv sync installs jetstream's tools, then jetstream check and every
-# pre-commit hook, plus a DCO check over a PR's commits.
+# pre-commit hook.
 name: jetstream lint
 
 on:  # yamllint disable-line rule:truthy
@@ -30,7 +30,7 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          fetch-depth: 0  # gitleaks scans the history, and the DCO check reads the PR's commits
+          fetch-depth: 0  # gitleaks scans the history
           persist-credentials: false
 
       - name: Install uv
@@ -47,10 +47,3 @@ jobs:
           # CI's checkout of main is a branch, but no one is committing to it
           SKIP: no-commit-to-branch
         run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
-
-      - name: DCO sign-off on every commit in the PR
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: uv run --no-sync run-dco.sh --commits "${BASE_SHA}..${HEAD_SHA}"

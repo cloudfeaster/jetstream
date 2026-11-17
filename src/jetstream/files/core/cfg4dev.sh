@@ -33,7 +33,7 @@ if uv sync; then
     fi
     unset _jetstream_pyproject _jetstream_pyproject_synced
 
-    # the pre-commit and commit-msg hooks (default_install_hook_types)
+    # the pre-commit hook
     pre-commit install
 
     if [[ -f cfg4dev.local.sh ]]; then
