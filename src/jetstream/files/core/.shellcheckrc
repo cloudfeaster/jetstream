@@ -1,0 +1,2 @@
+# jetstream's shellcheck config (core pack), written by `jetstream sync`.
+# shellcheck's defaults: every check, at every severity.

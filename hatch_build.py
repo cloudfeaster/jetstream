@@ -2,7 +2,8 @@
 
 For this machine's platform, the hook downloads each binary tool pinned in
 ``binaries.toml``, checks its SHA-256 and adds it to the wheel's scripts, so
-installing the wheel puts it in ``.venv/bin`` (decision 4). The wheel is
+installing the wheel puts it in ``.venv/bin`` (decision 4). Each pack's
+``run-*.sh`` scripts go there too (decision 8). The wheel is
 tagged ``py3-none-<platform>``: built once per release per platform, then
 served from uv's cache whatever the Python version.
 
@@ -41,6 +42,7 @@ SUPPORTED_PLATFORMS: Final[dict[tuple[str, str], str]] = {
 }
 
 PINS_FILE: Final[str] = "binaries.toml"
+SCRIPTS_GLOB: Final[str] = "src/jetstream/bin/*/*.sh"  # each pack's run-*.sh scripts
 DOWNLOAD_TIMEOUT_SECONDS: Final[int] = 60
 CHUNK_SIZE: Final[int] = 1024 * 1024
 
@@ -71,7 +73,7 @@ class Binary(NamedTuple):
     name: str
     version: str
     url: str
-    member: str
+    member: str | None  # the executable inside a .tar.gz asset; None when the asset is the executable
     sha256: str
 
 
@@ -97,7 +99,7 @@ def load_binaries(pins_path: Path, tag: str) -> list[Binary]:
                     name=name,
                     version=version,
                     url=f"https://github.com/{pin['repo']}/releases/download/{tag_name}/{asset}",
-                    member=pin["member"].format(**fields),
+                    member=pin["member"].format(**fields) if "member" in pin else None,
                     sha256=platform_pin["sha256"].lower(),
                 ),
             )
@@ -157,8 +159,12 @@ def download(binary: Binary, cache_dir: Path) -> Path:
 
 
 def extract(binary: Binary, archive: Path, dest_dir: Path) -> Path:
-    """Extract ``binary``'s executable from its ``.tar.gz`` ``archive`` into ``dest_dir``."""
+    """Put ``binary``'s executable in ``dest_dir``: extracted from its ``.tar.gz`` ``archive``, or copied if it has no member."""
     dest: Path = dest_dir / binary.name
+    if binary.member is None:
+        shutil.copyfile(archive, dest)
+        dest.chmod(0o755)
+        return dest
     try:
         with tarfile.open(archive, "r:gz") as tar:
             member: tarfile.TarInfo = tar.getmember(binary.member)
@@ -173,6 +179,17 @@ def extract(binary: Binary, archive: Path, dest_dir: Path) -> Path:
         fail(f"can't extract {binary.member} from {binary.url}: {e}")
     dest.chmod(0o755)
     return dest
+
+
+def run_scripts(root: Path) -> list[Path]:
+    """Return every pack's ``run-*.sh`` scripts, failing if two packs use the same name."""
+    scripts: list[Path] = sorted(root.glob(SCRIPTS_GLOB))
+    seen: dict[str, Path] = {}
+    for script in scripts:
+        if script.name in seen:
+            fail(f"{script.relative_to(root)} and {seen[script.name].relative_to(root)} both install .venv/bin/{script.name}")
+        seen[script.name] = script
+    return scripts
 
 
 class JetstreamBuildHook(BuildHookInterface):
@@ -193,6 +210,8 @@ class JetstreamBuildHook(BuildHookInterface):
         for binary in load_binaries(Path(self.root) / PINS_FILE, tag):
             executable: Path = extract(binary, download(binary, cache_dir), self._work_dir)
             build_data["shared_scripts"][str(executable)] = binary.name
+        for script in run_scripts(Path(self.root)):
+            build_data["shared_scripts"][str(script)] = script.name
 
     def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:  # noqa: ARG002
         """Remove the extracted binaries once the wheel is written."""

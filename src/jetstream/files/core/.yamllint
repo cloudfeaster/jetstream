@@ -1,0 +1,9 @@
+---
+# jetstream's yamllint config (core pack), written by `jetstream sync`.
+# yamllint can't read pyproject.toml, so this is a file of its own.
+extends: default
+
+rules:
+  # 80 characters is the aim, but a longer line isn't worth failing on.
+  line-length:
+    max: 256
