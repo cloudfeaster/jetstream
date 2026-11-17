@@ -5,7 +5,7 @@ import importlib.machinery
 import importlib.util
 import types
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import pytest
 import tomlkit
@@ -16,9 +16,9 @@ assert _spec.loader is not None
 update_binary: types.ModuleType = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(update_binary)
 
-NOW = datetime.datetime(2026, 11, 17, tzinfo=datetime.UTC)
+NOW: Final[datetime.datetime] = datetime.datetime(2026, 11, 17, tzinfo=datetime.UTC)
 
-PINS = """\
+PINS: Final[str] = """\
 # A comment that must survive.
 
 [tool]

@@ -29,20 +29,20 @@ import tomllib
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import IO, Any, NamedTuple, NoReturn
+from typing import IO, Any, Final, NamedTuple, NoReturn
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 # (sys.platform, platform.machine()) -> wheel platform tag
-SUPPORTED_PLATFORMS: dict[tuple[str, str], str] = {
+SUPPORTED_PLATFORMS: Final[dict[tuple[str, str], str]] = {
     ("linux", "x86_64"): "linux_x86_64",
     ("linux", "aarch64"): "linux_aarch64",
     ("darwin", "arm64"): "macosx_11_0_arm64",
 }
 
-PINS_FILE = "binaries.toml"
-DOWNLOAD_TIMEOUT_SECONDS = 60
-CHUNK_SIZE = 1024 * 1024
+PINS_FILE: Final[str] = "binaries.toml"
+DOWNLOAD_TIMEOUT_SECONDS: Final[int] = 60
+CHUNK_SIZE: Final[int] = 1024 * 1024
 
 
 def fail(message: str) -> NoReturn:
@@ -178,7 +178,7 @@ def extract(binary: Binary, archive: Path, dest_dir: Path) -> Path:
 class JetstreamBuildHook(BuildHookInterface):
     """Tag the wheel ``py3-none-<platform>`` and bundle the pinned binaries."""
 
-    PLUGIN_NAME = "custom"
+    PLUGIN_NAME: str = "custom"  # overrides BuildHookInterface, so not Final
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:  # noqa: ARG002
         """Download, verify and extract the binaries before hatchling builds the wheel."""

@@ -9,11 +9,11 @@ import tarfile
 import tomllib
 import types
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import pytest
 
-ROOT = Path(__file__).parent.parent
+ROOT: Final[Path] = Path(__file__).parent.parent
 
 _spec: importlib.machinery.ModuleSpec | None = importlib.util.spec_from_file_location("hatch_build", ROOT / "hatch_build.py")
 assert _spec is not None

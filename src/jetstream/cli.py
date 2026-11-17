@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import sys
 from importlib.metadata import version
+from typing import Final
 
-EXIT_NOT_IMPLEMENTED = 2
+EXIT_NOT_IMPLEMENTED: Final[int] = 2
 
-COMMANDS = {
+COMMANDS: Final[dict[str, str]] = {
     "sync": "write jetstream's owned files, pyproject.toml keys and .gitignore block",
     "check": "fail if anything differs from what sync would write",
     "new-repo": "create a new repo's first pyproject.toml, then sync",

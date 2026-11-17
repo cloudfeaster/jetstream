@@ -22,13 +22,13 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import tomlkit
 
-PINS_PATH = Path(__file__).resolve().parent.parent / "binaries.toml"
-COOLDOWN = datetime.timedelta(days=7)
-API_TIMEOUT_SECONDS = 30
+PINS_PATH: Final[Path] = Path(__file__).resolve().parent.parent / "binaries.toml"
+COOLDOWN: Final[datetime.timedelta] = datetime.timedelta(days=7)
+API_TIMEOUT_SECONDS: Final[int] = 30
 
 
 class UpdateError(Exception):
