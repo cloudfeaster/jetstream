@@ -27,6 +27,7 @@ version = "1.0.0"
 tag = "v{version}"
 asset = "tool-{version}-{platform}.tar.gz"
 member = "tool"
+checksums = "SHA256SUMS"
 
 [tool.platforms]
 linux_x86_64 = { platform = "linux-amd64", sha256 = "old1" }
@@ -41,13 +42,31 @@ def release(version: str, days_old: int, digests: bool = True) -> dict[str, Any]
         "assets": [
             {"name": f"tool-{version}-linux-amd64.tar.gz", "digest": "sha256:new1" if digests else None},
             {"name": f"tool-{version}-macos-arm64.tar.gz", "digest": "sha256:new2" if digests else None},
-            {"name": "checksums.txt", "digest": "sha256:xxx"},
+            {"name": "SHA256SUMS", "digest": "sha256:xxx", "browser_download_url": f"https://example.test/{version}/SHA256SUMS"},
         ],
     }
 
 
+def sha256sums(version: str, linux: str = "new1", macos: str = "new2") -> str:
+    return f"{linux}  tool-{version}-linux-amd64.tar.gz\n{macos} *dist/tool-{version}-macos-arm64.tar.gz\n"
+
+
 @pytest.fixture
-def api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+def downloads(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+    """Release assets by URL; the checksums for 1.1.0 by default."""
+    files: dict[str, str] = {"https://example.test/1.1.0/SHA256SUMS": sha256sums("1.1.0")}
+
+    def fake_fetch_text(url: str) -> str:
+        if url not in files:
+            raise update_binary.UpdateError(f"{url}: 404 Not Found")
+        return files[url]
+
+    monkeypatch.setattr(update_binary, "fetch_text", fake_fetch_text)
+    return files
+
+
+@pytest.fixture
+def api(monkeypatch: pytest.MonkeyPatch, downloads: dict[str, str]) -> dict[str, Any]:  # noqa: ARG001
     responses: dict[str, Any] = {}
 
     def fake_github_api(path: str) -> Any:  # noqa: ANN401
@@ -94,6 +113,47 @@ def test_update_fails_without_a_digest(api: dict[str, Any]) -> None:
     api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8, digests=False)
     with pytest.raises(update_binary.UpdateError, match="no SHA-256 digest"):
         update_binary.update(tomlkit.parse(PINS), "tool", None, NOW)
+
+
+def test_update_fails_when_the_projects_checksum_differs(api: dict[str, Any], downloads: dict[str, str]) -> None:
+    api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8)
+    downloads["https://example.test/1.1.0/SHA256SUMS"] = sha256sums("1.1.0", macos="other")
+    with pytest.raises(update_binary.UpdateError, match="GitHub's digest new2 doesn't match other in SHA256SUMS"):
+        update_binary.update(tomlkit.parse(PINS), "tool", None, NOW)
+
+
+def test_update_fails_when_the_checksums_file_has_no_entry(api: dict[str, Any], downloads: dict[str, str]) -> None:
+    api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8)
+    downloads["https://example.test/1.1.0/SHA256SUMS"] = "new1  tool-1.1.0-linux-amd64.tar.gz\n"
+    with pytest.raises(update_binary.UpdateError, match="SHA256SUMS in release v1.1.0 has no entry for tool-1.1.0-macos-arm64"):
+        update_binary.update(tomlkit.parse(PINS), "tool", None, NOW)
+
+
+def test_update_fails_without_a_checksums_file(api: dict[str, Any]) -> None:
+    rel: dict[str, Any] = release("1.1.0", days_old=8)
+    rel["assets"] = rel["assets"][:2]
+    api["repos/owner/tool/releases/latest"] = rel
+    with pytest.raises(update_binary.UpdateError, match="has no checksums file SHA256SUMS"):
+        update_binary.update(tomlkit.parse(PINS), "tool", None, NOW)
+
+
+def test_update_with_a_checksums_file_per_asset(api: dict[str, Any], downloads: dict[str, str]) -> None:
+    rel: dict[str, Any] = release("1.1.0", days_old=8)
+    rel["assets"] = rel["assets"][:2]
+    for asset, sha256 in [("tool-1.1.0-linux-amd64.tar.gz", "new1"), ("tool-1.1.0-macos-arm64.tar.gz", "new2")]:
+        url: str = f"https://example.test/{asset}.sha256"
+        rel["assets"].append({"name": f"{asset}.sha256", "browser_download_url": url})
+        downloads[url] = f"{sha256}  {asset}\n"
+    api["repos/owner/tool/releases/latest"] = rel
+    pins: tomlkit.TOMLDocument = tomlkit.parse(PINS.replace('"SHA256SUMS"', '"{asset}.sha256"'))
+    assert update_binary.update(pins, "tool", None, NOW) == "tool: 1.0.0 -> 1.1.0"
+
+
+def test_parse_checksums() -> None:
+    assert update_binary.parse_checksums("ABC  a.tar.gz\ndef *dir/b.tar.gz\n\nnot-a-line\n") == {
+        "a.tar.gz": "abc",
+        "b.tar.gz": "def",
+    }
 
 
 def test_update_fails_on_unknown_tool(api: dict[str, Any]) -> None:  # noqa: ARG001

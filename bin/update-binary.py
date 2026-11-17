@@ -7,7 +7,9 @@
 
 A release is only used once it's at least 7 days old (the cooldown, as for
 uv's exclude-newer and Dependabot), unless VERSION names it explicitly.
-SHA-256s come from the digests GitHub records for each release asset.
+SHA-256s come from the digests GitHub records for each release asset, and
+must match the checksums file the project publishes in the same release
+(the pin's `checksums`), so a bump never rests on one source.
 
 Set GITHUB_TOKEN to avoid the GitHub API's 60 requests/hour limit.
 """
@@ -70,18 +72,54 @@ def is_past_cooldown(release: dict[str, Any], now: datetime.datetime) -> bool:
     return now - released_at(release) >= COOLDOWN
 
 
+def fetch_text(url: str) -> str:
+    """GET ``url`` (a release asset) as text."""
+    try:
+        with urllib.request.urlopen(url, timeout=API_TIMEOUT_SECONDS) as response:  # noqa: S310
+            return response.read().decode()
+    except urllib.error.HTTPError as e:
+        raise UpdateError(f"{url}: {e.code} {e.reason}") from e
+    except urllib.error.URLError as e:
+        raise UpdateError(f"{url}: {e.reason}") from e
+
+
+def parse_checksums(text: str) -> dict[str, str]:
+    """Parse ``sha256sum`` output (``<hex>  [*]<file>`` per line) into {file name: SHA-256}."""
+    result: dict[str, str] = {}
+    for line in text.splitlines():
+        parts: list[str] = line.split(maxsplit=1)
+        if len(parts) == 2:  # noqa: PLR2004 (hash and name)
+            name: str = parts[1].strip().lstrip("*").rsplit("/", 1)[-1]
+            result[name] = parts[0].lower()
+    return result
+
+
 def platform_digests(pin: dict[str, Any], version: str, release: dict[str, Any]) -> dict[str, str]:
-    """Return each platform's SHA-256 for ``version``, from ``release``'s asset digests."""
-    digests: dict[str, str | None] = {asset["name"]: asset.get("digest") for asset in release["assets"]}
+    """Return each platform's SHA-256 for ``version``, checked against the project's checksums."""
+    assets: dict[str, dict[str, Any]] = {asset["name"]: asset for asset in release["assets"]}
+    published: dict[str, dict[str, str]] = {}  # checksums file name -> its parsed contents
     result: dict[str, str] = {}
     for tag, platform_pin in pin["platforms"].items():
         asset: str = pin["asset"].format(version=version, platform=platform_pin["platform"])
-        if asset not in digests:
+        if asset not in assets:
             raise UpdateError(f"release {release['tag_name']} has no asset {asset} (for {tag})")
-        digest: str | None = digests[asset]
+        digest: str | None = assets[asset].get("digest")
         if not digest or not digest.startswith("sha256:"):
             raise UpdateError(f"GitHub has no SHA-256 digest for {asset} in release {release['tag_name']}")
-        result[tag] = digest.removeprefix("sha256:")
+        sha256: str = digest.removeprefix("sha256:")
+
+        checksums: str = pin["checksums"].format(version=version, asset=asset)
+        if checksums not in published:
+            if checksums not in assets:
+                raise UpdateError(f"release {release['tag_name']} has no checksums file {checksums}")
+            published[checksums] = parse_checksums(fetch_text(assets[checksums]["browser_download_url"]))
+        if asset not in published[checksums]:
+            raise UpdateError(f"{checksums} in release {release['tag_name']} has no entry for {asset}")
+        if published[checksums][asset] != sha256:
+            raise UpdateError(
+                f"{asset}: GitHub's digest {sha256} doesn't match {published[checksums][asset]} in {checksums}",
+            )
+        result[tag] = sha256
     return result
 
 
@@ -109,7 +147,7 @@ def update(pins: tomlkit.TOMLDocument, tool: str, version: str | None, now: date
     for tag, sha256 in digests.items():
         pin["platforms"][tag]["sha256"] = sha256
     if old_version == version:
-        return f"{tool} {version}: already pinned; SHA-256s checked"
+        return f"{tool} {version}: already pinned; SHA-256s match GitHub's digests and the project's checksums"
     return f"{tool}: {old_version} -> {version}"
 
 

@@ -66,6 +66,7 @@ def test_every_tool_is_pinned_for_every_supported_platform() -> None:
     pins: dict[str, Any] = tomllib.loads((ROOT / hatch_build.PINS_FILE).read_text())
     for name, pin in pins.items():
         assert set(pin["platforms"]) == set(hatch_build.SUPPORTED_PLATFORMS.values()), name
+        assert "checksums" in pin, f"{name} needs the project's checksums file, for bin/update-binary.py"
 
 
 def test_every_pin_resolves() -> None:
