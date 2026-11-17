@@ -1,5 +1,9 @@
 # jetstream
 
+<p align="center">
+  <img src="images/jetstream-hero.png" alt="jetstream logo: a cloud with orange jet streams" width="480">
+</p>
+
 jetstream defines how every Cloudfeaster repo's development environment works, and packages it.
 
 It's a Python package, `cloudfeaster-jetstream`, released as git tags. A release holds the approved dev toolchain (lint and security tools, all pinned), their configuration, `cfg4dev.sh`, VS Code settings, CI workflows, Claude Code plugins and shared conventions. A repo installs one jetstream release into its `.venv`, and bumping that one pin moves the whole toolchain and its configuration together.
