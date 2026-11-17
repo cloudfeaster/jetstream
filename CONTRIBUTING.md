@@ -18,13 +18,15 @@ pytest
 
 `cfg4dev.sh` installs jetstream from your working tree into `.venv`, so you develop against your own changes.
 
+`cfg4dev.sh` and the checks are described in [dev-environment.md](.jetstream/docs/core/dev-environment.md).
+
 ## Making a change
 
-1. Branch from `main`. Changes reach `main` only through a pull request.
-1. Write commit messages as [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`). Releases and `CHANGELOG.md` are generated from them.
-1. Sign your commits (GPG, SSH or S/MIME). `main` only accepts signed commits.
-1. Sign off every commit under the DCO (next section).
-1. Open a pull request and make sure CI passes.
+Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit signed and signed off, open a draft pull request, and squash-merge once `jetstream lint` passes. Commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`); releases and `CHANGELOG.md` will be generated from them.
+
+## Conventions
+
+jetstream follows the conventions it ships, in [`.jetstream/docs/core/`](.jetstream/docs/core/): [GitHub Actions](.jetstream/docs/core/github-actions.md), [Markdown](.jetstream/docs/core/markdown.md), [JSON](.jetstream/docs/core/json.md), [diagrams](.jetstream/docs/core/diagrams.md) and [licensing](.jetstream/docs/core/licensing.md). `jetstream sync` writes those files from `src/jetstream/docs/`, so edit them there.
 
 ## Developer Certificate of Origin (DCO)
 
