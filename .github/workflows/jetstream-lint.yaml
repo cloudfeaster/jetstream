@@ -1,0 +1,56 @@
+---
+# Written by `jetstream sync` (core pack); don't edit.
+#
+# One job, "jetstream lint", so the org ruleset can require one stable
+# status check. It runs what a developer's git hooks run (decision 10):
+# uv sync installs jetstream's tools, then jetstream check and every
+# pre-commit hook, plus a DCO check over a PR's commits.
+name: jetstream lint
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # superseded PR runs are cancelled; runs on main always finish
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: jetstream lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0  # gitleaks scans the history, and the DCO check reads the PR's commits
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+
+      - name: Install jetstream and its tools
+        run: uv sync --locked
+
+      - name: jetstream check
+        run: uv run --no-sync jetstream check
+
+      - name: pre-commit hooks
+        env:
+          # CI's checkout of main is a branch, but no one is committing to it
+          SKIP: no-commit-to-branch
+        run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
+
+      - name: DCO sign-off on every commit in the PR
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: uv run --no-sync run-dco.sh --commits "${BASE_SHA}..${HEAD_SHA}"

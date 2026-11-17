@@ -91,7 +91,8 @@ def repo(tmp_path: Path) -> Path:
     git(repo, "config", "user.email", "dev@example.com")
     git(repo, "config", "commit.gpgsign", "false")
     for owned in CORE_FILES.iterdir():
-        shutil.copy(owned, repo / owned.name)
+        if owned.is_file():  # the config files, not the workflow, which would change what zizmor sees
+            shutil.copy(owned, repo / owned.name)
     git(repo, "add", ".")
     return repo
 
@@ -284,6 +285,40 @@ def test_dco_fails_without_the_authors_sign_off(repo: Path, tmp_path: Path, run:
     result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", str(message))
     assert result.returncode == 1
     assert f"'Signed-off-by: {AUTHOR}'" in result.stderr
+
+
+def commit(repo: Path, subject: str, *, signed: bool, author: str = AUTHOR) -> None:
+    body: str = f"{subject}\n\nSigned-off-by: {author}\n" if signed else f"{subject}\n"
+    git(repo, "commit", "--quiet", "--allow-empty", f"--author={author}", "-m", body)
+
+
+def test_dco_commits_passes_when_every_commit_is_signed_off(repo: Path, run: Run) -> None:
+    commit(repo, "base", signed=False)
+    base: str = git(repo, "rev-parse", "HEAD").strip()
+    commit(repo, "one", signed=True)
+    commit(repo, "two by someone else", signed=True, author="Other Person <other@example.com>")
+    assert run(repo, "run-dco.sh", "--commits", f"{base}..HEAD").returncode == 0
+
+
+def test_dco_commits_names_each_unsigned_commit(repo: Path, run: Run) -> None:
+    commit(repo, "base", signed=False)
+    base: str = git(repo, "rev-parse", "HEAD").strip()
+    commit(repo, "signed", signed=True)
+    commit(repo, "unsigned", signed=False)
+    git(repo, "commit", "--quiet", "--allow-empty", "--author=Other Person <other@example.com>", "-m", f"wrong signer\n\nSigned-off-by: {AUTHOR}\n")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", "--commits", f"{base}..HEAD")
+    assert result.returncode == 1
+    assert " unsigned: no 'Signed-off-by: A Developer <dev@example.com>'" in result.stderr
+    assert " wrong signer: no 'Signed-off-by: Other Person <other@example.com>'" in result.stderr
+    assert " signed:" not in result.stderr
+    assert "2 commit(s) without a DCO sign-off" in result.stderr
+
+
+@pytest.mark.parametrize("args", [[], ["--commits"], ["a", "b"]])
+def test_dco_usage(repo: Path, run: Run, args: list[str]) -> None:
+    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", *args)
+    assert result.returncode == 1
+    assert "usage:" in result.stderr
 
 
 # --- no-commit-to-branch
