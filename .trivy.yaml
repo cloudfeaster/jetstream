@@ -1,0 +1,16 @@
+---
+# jetstream's trivy config (core pack), written by `jetstream sync`.
+# Temporary exceptions go in the repo's own .trivyignore.
+exit-code: 1
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+scan:
+  skip-dirs:
+    - .venv
+    - node_modules
+
+fs:
+  include-dev-deps: true

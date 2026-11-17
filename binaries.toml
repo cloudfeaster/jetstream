@@ -6,7 +6,8 @@
 # GitHub's digest for the asset and checks it against the project's own
 # `checksums` file in the same release. Don't edit SHA-256s by hand.
 #
-# Each tool's release asset is `asset` and the binary inside it is `member`,
+# Each tool's release asset is `asset` and the binary inside it is `member`
+# (leave `member` out when the asset is the binary itself),
 # with {version} and {platform} filled in; `checksums` can also use {asset}. The [<tool>.platforms] keys are the
 # wheel platform tags in hatch_build.py's SUPPORTED_PLATFORMS.
 
@@ -61,3 +62,15 @@ checksums = "trivy_{version}_checksums.txt"
 linux_x86_64 = { platform = "Linux-64bit", sha256 = "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf" }
 linux_aarch64 = { platform = "Linux-ARM64", sha256 = "ab9d51f86e6a5fb936f605faff6b593ac51bc378fff4d3e8b9d58358b9c367c3" }
 macosx_11_0_arm64 = { platform = "macOS-ARM64", sha256 = "ae7ea358326960406b703c77b2ac490190797d80b306b5b50c2a27221da0a5b8" }
+
+[jq]
+repo = "jqlang/jq"
+version = "1.8.2"
+tag = "jq-{version}"
+asset = "jq-{platform}"
+checksums = "sha256sum.txt"
+
+[jq.platforms]
+linux_x86_64 = { platform = "linux-amd64", sha256 = "b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f" }
+linux_aarch64 = { platform = "linux-arm64", sha256 = "8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309" }
+macosx_11_0_arm64 = { platform = "macos-arm64", sha256 = "2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e" }

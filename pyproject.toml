@@ -18,7 +18,13 @@ dependencies = []
 [project.optional-dependencies]
 # One extra per pack. Each pack's Python tools are exact-pinned here;
 # binary and Node tools are bundled into the wheel by hatch_build.py.
-core = []
+core = [
+    "pre-commit==4.7.0",
+    "pytest==9.2.0",  # the unit-tests hook
+    "shellcheck-py==0.11.0.1",
+    "yamllint==1.38.0",
+    "zizmor==1.32.0",
+]
 python = []
 website = []
 
@@ -31,13 +37,15 @@ Issues = "https://github.com/cloudfeaster/jetstream/issues"
 
 [dependency-groups]
 dev = [
+    "cloudfeaster-jetstream[core]",  # jetstream checks itself with its own core pack
     "hatchling==1.33.0",  # for tests of hatch_build.py; keep in step with [build-system]
-    "pytest==9.2.0",
     "tomlkit==0.15.2",  # for bin/update-binary.py
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/jetstream"]
+# The build hook installs these into .venv/bin, so they aren't package files too.
+exclude = ["src/jetstream/bin"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "hatch_build.py"
@@ -51,6 +59,7 @@ cache-keys = [
     {file = "pyproject.toml"},
     {file = "hatch_build.py"},
     {file = "binaries.toml"},
+    {file = "src/jetstream/bin/**"},
     {file = "package.json"},
     {file = "package-lock.json"},
     {file = "src/jetstream/config/**"},
@@ -58,3 +67,6 @@ cache-keys = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: slow tests that run-unit-tests.sh leaves out",
+]

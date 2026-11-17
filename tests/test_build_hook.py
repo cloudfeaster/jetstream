@@ -14,6 +14,7 @@ from typing import Any, Final
 import pytest
 
 ROOT: Final[Path] = Path(__file__).parent.parent
+BINARIES: Final[set[str]] = {"mado", "d2", "gitleaks", "trivy", "jq"}
 
 _spec: importlib.machinery.ModuleSpec | None = importlib.util.spec_from_file_location("hatch_build", ROOT / "hatch_build.py")
 assert _spec is not None
@@ -72,7 +73,7 @@ def test_every_tool_is_pinned_for_every_supported_platform() -> None:
 def test_every_pin_resolves() -> None:
     for tag in hatch_build.SUPPORTED_PLATFORMS.values():
         binaries: list[hatch_build.Binary] = hatch_build.load_binaries(ROOT / hatch_build.PINS_FILE, tag)
-        assert {b.name for b in binaries} == {"mado", "d2", "gitleaks", "trivy"}
+        assert {b.name for b in binaries} == BINARIES
         for binary in binaries:
             assert binary.url.startswith("https://github.com/")
             assert len(binary.sha256) == 64
@@ -202,6 +203,38 @@ def test_extract_writes_an_executable(tmp_path: Path) -> None:
     assert executable.stat().st_mode & 0o777 == 0o755
 
 
+def test_extract_copies_an_asset_that_is_the_executable(tmp_path: Path) -> None:
+    asset: Path = tmp_path / "tool-linux-amd64"
+    asset.write_bytes(b"tool")
+    dest_dir: Path = tmp_path / "out"
+    dest_dir.mkdir()
+    binary: hatch_build.Binary = binary_for(asset, "0" * 64)._replace(member=None)
+
+    executable: Path = hatch_build.extract(binary, asset, dest_dir)
+    assert executable == dest_dir / "tool"
+    assert executable.read_bytes() == b"tool"
+    assert executable.stat().st_mode & 0o777 == 0o755
+
+
+def test_load_binaries_without_a_member(tmp_path: Path) -> None:
+    pins: Path = tmp_path / "binaries.toml"
+    pins.write_text(
+        """
+[tool]
+repo = "owner/tool"
+version = "1.2.3"
+tag = "tool-{version}"
+asset = "tool-{platform}"
+
+[tool.platforms]
+linux_x86_64 = { platform = "linux-amd64", sha256 = "abc" }
+""",
+    )
+    [binary] = hatch_build.load_binaries(pins, "linux_x86_64")
+    assert binary.member is None
+    assert binary.url == "https://github.com/owner/tool/releases/download/tool-1.2.3/tool-linux-amd64"
+
+
 def test_extract_fails_on_missing_member(tmp_path: Path) -> None:
     archive: Path = tmp_path / "tool.tar.gz"
     sha256: str = make_archive(archive, {"other": b"x"})
@@ -218,12 +251,37 @@ def test_extract_fails_on_a_corrupt_archive(tmp_path: Path) -> None:
     assert_one_line_failure(exc_info, "can't extract dir/tool from file://")
 
 
+# --- run-*.sh scripts
+
+
+def test_run_scripts_are_found() -> None:
+    names: list[str] = [script.name for script in hatch_build.run_scripts(ROOT)]
+    assert "run-mado.sh" in names
+    assert all(name.startswith("run-") and name.endswith(".sh") for name in names)
+
+
+def test_run_scripts_fails_on_a_name_used_by_two_packs(tmp_path: Path) -> None:
+    for pack in ("core", "python"):
+        (tmp_path / "src" / "jetstream" / "bin" / pack).mkdir(parents=True)
+        (tmp_path / "src" / "jetstream" / "bin" / pack / "run-x.sh").write_text("")
+    with pytest.raises(SystemExit) as exc_info:
+        hatch_build.run_scripts(tmp_path)
+    assert_one_line_failure(exc_info, "src/jetstream/bin/python/run-x.sh and src/jetstream/bin/core/run-x.sh both install")
+
+
 # --- jetstream's own .venv
 
 
-@pytest.mark.parametrize("name", ["mado", "d2", "gitleaks", "trivy"])
+@pytest.mark.parametrize("name", sorted(BINARIES))
 def test_binaries_are_installed_in_this_venv(name: str) -> None:
     # uv installs jetstream into its own .venv, so the build hook has run.
     executable: Path = Path(sys.prefix) / "bin" / name
     assert executable.is_file()
     assert executable.stat().st_mode & 0o111
+
+
+@pytest.mark.parametrize("script", hatch_build.run_scripts(ROOT), ids=lambda script: script.name)
+def test_run_scripts_are_installed_in_this_venv(script: Path) -> None:
+    installed: Path = Path(sys.prefix) / "bin" / script.name
+    assert installed.read_bytes() == script.read_bytes(), "rebuild with uv sync"
+    assert installed.stat().st_mode & 0o111
