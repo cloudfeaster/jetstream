@@ -21,3 +21,7 @@ coverage.xml
 # Tool caches
 .ruff_cache/
 .mypy_cache/
+
+# Claude Code: each person's own settings, and `claude --worktree` checkouts
+.claude/settings.local.json
+.claude/worktrees/

@@ -78,16 +78,23 @@ def test_read_packs_needs_a_pyproject(tmp_path: Path) -> None:
 def test_core_owns_its_files() -> None:
     want: sync.Expected = sync.expected(("core",))
     assert set(want.files) == {
+        ".claude/settings.json",
+        ".github/dependabot.yml",
         ".github/workflows/jetstream-lint.yaml",
+        ".jetstream/docs/core/dco.md",
         ".jsonlintignore",
         ".pre-commit-config.yaml",
         ".shellcheckrc",
         ".trivy.yaml",
+        ".vscode/.gitignore",
+        ".vscode/settings.json",
+        ".vscode/terminal-init.sh",
         ".yamllint",
         "cfg4dev.sh",
         "mado.toml",
     }
     assert want.files["cfg4dev.sh"].executable
+    assert want.files[".jetstream/docs/core/dco.md"].content.decode().startswith(sync.DOC_HEADER + "# Developer Certificate of Origin")
     assert "entry: jetstream check" in want.files[".pre-commit-config.yaml"].content.decode()
     assert want.gitignore_block.startswith(sync.GITIGNORE_START + "\n")
     assert want.gitignore_block.endswith(sync.GITIGNORE_END + "\n")
@@ -159,11 +166,32 @@ def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Pat
     workflows: Path = synced / ".github" / "workflows"  # sync wrote jetstream-lint.yaml there
     (workflows / "jetstream-old.yaml").write_text("old\n")
     (workflows / "deploy.yaml").write_text("the repo's own\n")
-    assert sync.check(synced) == [".github/workflows/jetstream-old.yaml isn't a workflow this jetstream release writes"]
+    assert sync.check(synced) == [".github/workflows/jetstream-old.yaml isn't written by this jetstream release"]
 
     assert sync.sync(synced) == [".github/workflows/jetstream-old.yaml (deleted)"]
     assert not (workflows / "jetstream-old.yaml").exists()
     assert (workflows / "deploy.yaml").exists()
+
+
+def test_sync_replaces_the_docs_as_a_whole(synced: Path) -> None:
+    docs: Path = synced / ".jetstream" / "docs"
+    (docs / "core" / "dco.md").write_text("edited\n")
+    (docs / "core" / "old.md").write_text("# Old\n")
+    (docs / "retired").mkdir()
+    (docs / "retired" / "gone.md").write_text("# Gone\n")
+    assert sync.check(synced) == [
+        ".jetstream/docs/core/dco.md differs from what jetstream writes",
+        ".jetstream/docs/core/old.md isn't written by this jetstream release",
+        ".jetstream/docs/retired/gone.md isn't written by this jetstream release",
+    ]
+
+    assert sync.sync(synced) == [
+        ".jetstream/docs/core/dco.md",
+        ".jetstream/docs/core/old.md (deleted)",
+        ".jetstream/docs/retired/gone.md (deleted)",
+    ]
+    assert sorted(path.relative_to(docs).as_posix() for path in docs.rglob("*")) == ["core", "core/dco.md"]
+    assert sync.check(synced) == []
 
 
 # --- .gitignore

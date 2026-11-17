@@ -1,0 +1,25 @@
+// Written by `jetstream sync` (core pack); don't edit. Settings of your own
+// (port forwarding, editor preferences) go in your VS Code user settings.
+{
+    // cfg4dev.sh activates .venv, so the Python extension shouldn't as well.
+    "python.terminal.activateEnvironment": false,
+
+    // Every new terminal runs terminal-init.sh, which sources cfg4dev.sh.
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "bash",
+            "args": ["--rcfile", "${workspaceFolder}/.vscode/terminal-init.sh"]
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.profiles.osx": {
+        "bash": {
+            "path": "bash",
+            "args": ["--rcfile", "${workspaceFolder}/.vscode/terminal-init.sh"],
+            // Stops Apple's bash printing "The default interactive shell is
+            // now zsh..." each time this profile starts it.
+            "env": { "BASH_SILENCE_DEPRECATION_WARNING": "1" }
+        }
+    },
+    "terminal.integrated.defaultProfile.osx": "bash"
+}
