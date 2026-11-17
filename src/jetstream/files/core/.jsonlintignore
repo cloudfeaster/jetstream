@@ -1,5 +1,7 @@
 # Tracked *.json files run-json-lint.sh skips, as git pathspec globs.
 # Written by `jetstream sync` (core pack).
 #
-# VS Code settings files are JSONC (they allow comments), not strict JSON.
+# VS Code settings files are JSONC (they allow comments), not strict JSON,
+# in a .vscode folder anywhere in the repo.
 .vscode/*
+*/.vscode/*
