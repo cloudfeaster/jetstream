@@ -29,7 +29,7 @@ import tomllib
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, NamedTuple, NoReturn
+from typing import IO, Any, NamedTuple, NoReturn
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -52,11 +52,11 @@ def fail(message: str) -> NoReturn:
 
 def platform_tag(system: str | None = None, machine: str | None = None) -> str:
     """Return the wheel platform tag for this machine, or stop the build."""
-    system = sys.platform if system is None else system
-    machine = platform.machine() if machine is None else machine
-    tag = SUPPORTED_PLATFORMS.get((system, machine))
+    system: str = sys.platform if system is None else system
+    machine: str = platform.machine() if machine is None else machine
+    tag: str | None = SUPPORTED_PLATFORMS.get((system, machine))
     if tag is None:
-        supported = ", ".join(f"{s} {m}" for s, m in SUPPORTED_PLATFORMS)
+        supported: str = ", ".join(f"{s} {m}" for s, m in SUPPORTED_PLATFORMS)
         fail(f"unsupported platform {system} {machine}; jetstream supports {supported}")
     return tag
 
@@ -78,20 +78,20 @@ class Binary(NamedTuple):
 def load_binaries(pins_path: Path, tag: str) -> list[Binary]:
     """Read the pins in ``pins_path`` and resolve each tool for platform ``tag``."""
     try:
-        pins = tomllib.loads(pins_path.read_text())
+        pins: dict[str, Any] = tomllib.loads(pins_path.read_text())
     except (OSError, tomllib.TOMLDecodeError) as e:
         fail(f"can't read {pins_path.name}: {e}")
 
-    binaries = []
+    binaries: list[Binary] = []
     for name, pin in pins.items():
         try:
-            version = pin["version"]
-            platform_pin = pin["platforms"].get(tag)
+            version: str = pin["version"]
+            platform_pin: dict[str, str] | None = pin["platforms"].get(tag)
             if platform_pin is None:
                 fail(f"{pins_path.name} has no {tag} pin for {name}")
-            fields = {"version": version, "platform": platform_pin["platform"]}
-            tag_name = pin["tag"].format(**fields)
-            asset = pin["asset"].format(**fields)
+            fields: dict[str, str] = {"version": version, "platform": platform_pin["platform"]}
+            tag_name: str = pin["tag"].format(**fields)
+            asset: str = pin["asset"].format(**fields)
             binaries.append(
                 Binary(
                     name=name,
@@ -108,13 +108,13 @@ def load_binaries(pins_path: Path, tag: str) -> list[Binary]:
 
 def default_cache_dir() -> Path:
     """Return where downloads are cached, following the XDG base directory spec."""
-    cache_home = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
+    cache_home: str | Path = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
     return Path(cache_home) / "jetstream" / "downloads"
 
 
 def sha256_of(path: Path) -> str:
     """Return the hex SHA-256 of the file at ``path``."""
-    digest = hashlib.sha256()
+    digest: hashlib._Hash = hashlib.sha256()
     with path.open("rb") as f:
         while chunk := f.read(CHUNK_SIZE):
             digest.update(chunk)
@@ -126,15 +126,17 @@ def download(binary: Binary, cache_dir: Path) -> Path:
 
     The file is only kept, and only returned, if its SHA-256 matches the pin.
     """
-    cached = cache_dir / binary.sha256
+    cached: Path = cache_dir / binary.sha256
     if cached.is_file() and sha256_of(cached) == binary.sha256:
         return cached
 
     cache_dir.mkdir(parents=True, exist_ok=True)
+    fd: int
+    partial_name: str
     fd, partial_name = tempfile.mkstemp(dir=cache_dir, prefix=".partial-")
-    partial = Path(partial_name)
+    partial: Path = Path(partial_name)
     try:
-        digest = hashlib.sha256()
+        digest: hashlib._Hash = hashlib.sha256()
         # The URL is always https (file in tests), which is what S310 checks for.
         with os.fdopen(fd, "wb") as out, urllib.request.urlopen(binary.url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:  # noqa: S310
             while chunk := response.read(CHUNK_SIZE):
@@ -147,7 +149,7 @@ def download(binary: Binary, cache_dir: Path) -> Path:
             )
         partial.replace(cached)
     except (urllib.error.URLError, OSError) as e:
-        reason = getattr(e, "reason", None) or e
+        reason: object = getattr(e, "reason", None) or e
         fail(f"can't download {binary.name} {binary.version} from {binary.url}: {reason}")
     finally:
         partial.unlink(missing_ok=True)
@@ -156,11 +158,11 @@ def download(binary: Binary, cache_dir: Path) -> Path:
 
 def extract(binary: Binary, archive: Path, dest_dir: Path) -> Path:
     """Extract ``binary``'s executable from its ``.tar.gz`` ``archive`` into ``dest_dir``."""
-    dest = dest_dir / binary.name
+    dest: Path = dest_dir / binary.name
     try:
         with tarfile.open(archive, "r:gz") as tar:
-            member = tar.getmember(binary.member)
-            source = tar.extractfile(member) if member.isfile() else None
+            member: tarfile.TarInfo = tar.getmember(binary.member)
+            source: IO[bytes] | None = tar.extractfile(member) if member.isfile() else None
             if source is None:
                 fail(f"{binary.member} in {binary.url} isn't a regular file")
             with source, dest.open("wb") as out:
@@ -182,18 +184,18 @@ class JetstreamBuildHook(BuildHookInterface):
         """Download, verify and extract the binaries before hatchling builds the wheel."""
         if self.target_name != "wheel":
             return
-        tag = platform_tag()
+        tag: str = platform_tag()
         build_data["pure_python"] = False
         build_data["tag"] = f"py3-none-{tag}"
 
-        self._work_dir = Path(tempfile.mkdtemp(prefix="jetstream-build-"))
-        cache_dir = default_cache_dir()
+        self._work_dir: Path = Path(tempfile.mkdtemp(prefix="jetstream-build-"))
+        cache_dir: Path = default_cache_dir()
         for binary in load_binaries(Path(self.root) / PINS_FILE, tag):
-            executable = extract(binary, download(binary, cache_dir), self._work_dir)
+            executable: Path = extract(binary, download(binary, cache_dir), self._work_dir)
             build_data["shared_scripts"][str(executable)] = binary.name
 
     def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:  # noqa: ARG002
         """Remove the extracted binaries once the wheel is written."""
-        work_dir = getattr(self, "_work_dir", None)
+        work_dir: Path | None = getattr(self, "_work_dir", None)
         if work_dir is not None:
             shutil.rmtree(work_dir, ignore_errors=True)

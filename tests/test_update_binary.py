@@ -1,17 +1,19 @@
 """Tests for bin/update-binary.py."""
 
 import datetime
+import importlib.machinery
 import importlib.util
+import types
 from pathlib import Path
 from typing import Any
 
 import pytest
 import tomlkit
 
-_spec = importlib.util.spec_from_file_location("update_binary", Path(__file__).parent.parent / "bin" / "update-binary.py")
+_spec: importlib.machinery.ModuleSpec | None = importlib.util.spec_from_file_location("update_binary", Path(__file__).parent.parent / "bin" / "update-binary.py")
 assert _spec is not None
 assert _spec.loader is not None
-update_binary = importlib.util.module_from_spec(_spec)
+update_binary: types.ModuleType = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(update_binary)
 
 NOW = datetime.datetime(2026, 11, 17, tzinfo=datetime.UTC)
@@ -59,7 +61,7 @@ def api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
 def test_update_to_latest_keeps_comments_and_format(api: dict[str, Any]) -> None:
     api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8)
-    pins = tomlkit.parse(PINS)
+    pins: tomlkit.TOMLDocument = tomlkit.parse(PINS)
 
     assert update_binary.update(pins, "tool", None, NOW) == "tool: 1.0.0 -> 1.1.0"
     assert tomlkit.dumps(pins) == (
@@ -75,13 +77,13 @@ def test_update_to_latest_respects_the_cooldown(api: dict[str, Any]) -> None:
 
 def test_update_to_a_named_version_skips_the_cooldown(api: dict[str, Any]) -> None:
     api["repos/owner/tool/releases/tags/v1.1.0"] = release("1.1.0", days_old=0)
-    pins = tomlkit.parse(PINS)
+    pins: tomlkit.TOMLDocument = tomlkit.parse(PINS)
     assert update_binary.update(pins, "tool", "1.1.0", NOW) == "tool: 1.0.0 -> 1.1.0"
     assert pins["tool"]["platforms"]["linux_x86_64"]["sha256"] == "new1"
 
 
 def test_update_fails_on_a_missing_asset(api: dict[str, Any]) -> None:
-    rel = release("1.1.0", days_old=8)
+    rel: dict[str, Any] = release("1.1.0", days_old=8)
     rel["assets"] = rel["assets"][1:]
     api["repos/owner/tool/releases/latest"] = rel
     with pytest.raises(update_binary.UpdateError, match="has no asset tool-1.1.0-linux-amd64.tar.gz"):
