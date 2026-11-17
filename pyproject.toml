@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cloudfeaster-jetstream"
+version = "0.0.0"
+description = "Shared development infrastructure for Cloudfeaster repos: one pinned toolchain, its configuration, CI workflows and Claude Code plugins"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = "==3.13.*"
+authors = [
+    {name = "Cloudfeaster Solutions Inc."},
+]
+dependencies = []
+
+[project.optional-dependencies]
+# One extra per pack. Each pack's Python tools are exact-pinned here;
+# binary and Node tools are bundled into the wheel by hatch_build.py.
+core = []
+python = []
+website = []
+
+[project.scripts]
+jetstream = "jetstream.cli:main"
+
+[project.urls]
+Repository = "https://github.com/cloudfeaster/jetstream"
+Issues = "https://github.com/cloudfeaster/jetstream/issues"
+
+[dependency-groups]
+dev = [
+    "hatchling==1.33.0",  # for tests of hatch_build.py; keep in step with [build-system]
+    "pytest==9.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jetstream"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+
+[tool.uv]
+required-version = ">=0.13.5"
+exclude-newer = "7 days"
+# uv installs jetstream into its own .venv in editable mode, and the build
+# hook runs for that too, so anything the hook reads must rebuild on change.
+cache-keys = [
+    {file = "pyproject.toml"},
+    {file = "hatch_build.py"},
+    {file = "package.json"},
+    {file = "package-lock.json"},
+    {file = "src/jetstream/config/**"},
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
