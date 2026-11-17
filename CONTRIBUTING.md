@@ -28,7 +28,7 @@ Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit s
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please), from the Conventional Commits on `main`:
 
-1. Every push to `main` runs the `release-please` workflow. It opens, or updates, a release PR from the `release-please--branches--main` branch. The PR sets the next version in `pyproject.toml` and `uv.lock`, and adds the commits since the last release to `CHANGELOG.md`.
+1. Every push to `main` runs the `release-please` workflow. It opens, or updates, a release PR from the `release-please--branches--main--components--cloudfeaster-jetstream` branch. The PR sets the next version in `pyproject.toml` and `uv.lock`, and adds the commits since the last release to `CHANGELOG.md`.
 1. Merge the release PR like any other, once `jetstream lint` passes. The workflow then tags the merge commit `vX.Y.Z` and creates the GitHub Release.
 
 The commits decide the version. Before 1.0.0, a breaking change (`feat!:`) or a `feat:` bumps the minor version, and a `fix:` bumps the patch version. From 1.0.0 on, a breaking change bumps the major version. A change is breaking if a repo must change something it owns to take the release. Tags are never moved or deleted (decision 9 in #1).
