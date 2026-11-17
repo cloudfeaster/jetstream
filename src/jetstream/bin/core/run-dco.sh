@@ -1,22 +1,48 @@
 #!/usr/bin/env bash
 #
-# commit-msg hook: fail unless the commit message has a Developer Certificate
-# of Origin sign-off by the commit's author, as `git commit -s` adds.
+# Fail unless each commit has a Developer Certificate of Origin sign-off by
+# its author, as `git commit -s` adds.
 #
-#   run-dco.sh <commit message file>
+#   run-dco.sh <commit message file>     the commit-msg hook: the commit being made
+#   run-dco.sh --commits <revision range>  CI: every commit in a PR, e.g. base..head
 
 set -euo pipefail
 
-if [ $# != 1 ]; then
-    echo "usage: $(basename "$0") <commit message file>" >&2
+usage() {
+    echo "usage: $(basename "$0") <commit message file> | --commits <revision range>" >&2
+}
+
+# Strip the timestamp and timezone from `git var GIT_AUTHOR_IDENT`'s "Name <email> <timestamp> <timezone>".
+author_of_next_commit() {
+    git var GIT_AUTHOR_IDENT | sed -E 's/ [0-9]+ [-+][0-9]{4}$//'
+}
+
+if [ $# = 1 ] && [ "$1" != --commits ]; then
+    author="$(author_of_next_commit)"
+    if ! grep -qxF "Signed-off-by: ${author}" "$1"; then
+        echo "*** The commit message needs a DCO sign-off: 'Signed-off-by: ${author}'." >&2
+        echo "*** Commit with 'git commit -s' (or amend with 'git commit --amend -s')." >&2
+        exit 1
+    fi
+    exit 0
+fi
+
+if [ $# != 2 ] || [ "$1" != --commits ]; then
+    usage
     exit 1
 fi
 
-# `git var GIT_AUTHOR_IDENT` is "Name <email> <timestamp> <timezone>".
-author="$(git var GIT_AUTHOR_IDENT | sed -E 's/ [0-9]+ [-+][0-9]{4}$//')"
+unsigned=0
+while IFS= read -r commit; do
+    author="$(git log -1 --format='%an <%ae>' "${commit}")"
+    if ! git log -1 --format=%B "${commit}" | grep -qxF "Signed-off-by: ${author}"; then
+        echo "*** ${commit:0:12} $(git log -1 --format=%s "${commit}"): no 'Signed-off-by: ${author}'" >&2
+        unsigned=$((unsigned + 1))
+    fi
+done < <(git rev-list --no-merges "$2")
 
-if ! grep -qxF "Signed-off-by: ${author}" "$1"; then
-    echo "*** The commit message needs a DCO sign-off: 'Signed-off-by: ${author}'." >&2
-    echo "*** Commit with 'git commit -s' (or amend with 'git commit --amend -s')." >&2
+if [ "${unsigned}" -gt 0 ]; then
+    echo "*** ${unsigned} commit(s) without a DCO sign-off by their author." >&2
+    echo "*** Add them with 'git rebase --signoff <base>' and force-push the branch." >&2
     exit 1
 fi

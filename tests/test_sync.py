@@ -78,6 +78,7 @@ def test_read_packs_needs_a_pyproject(tmp_path: Path) -> None:
 def test_core_owns_its_files() -> None:
     want: sync.Expected = sync.expected(("core",))
     assert set(want.files) == {
+        ".github/workflows/jetstream-lint.yaml",
         ".jsonlintignore",
         ".pre-commit-config.yaml",
         ".shellcheckrc",
@@ -155,8 +156,7 @@ def test_check_names_changed_missing_and_non_executable_files(synced: Path) -> N
 
 
 def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Path) -> None:
-    workflows: Path = synced / ".github" / "workflows"
-    workflows.mkdir(parents=True)
+    workflows: Path = synced / ".github" / "workflows"  # sync wrote jetstream-lint.yaml there
     (workflows / "jetstream-old.yaml").write_text("old\n")
     (workflows / "deploy.yaml").write_text("the repo's own\n")
     assert sync.check(synced) == [".github/workflows/jetstream-old.yaml isn't a workflow this jetstream release writes"]
