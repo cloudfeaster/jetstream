@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
     set -- main
 fi
 
@@ -15,7 +15,7 @@ fi
 branch="$(git symbolic-ref --quiet --short HEAD || true)"
 
 for protected in "$@"; do
-    if [ "${branch}" = "${protected}" ]; then
+    if [[ "${branch}" = "${protected}" ]]; then
         echo "*** Don't commit directly to ${protected}: create a branch and open a PR." >&2
         exit 1
     fi

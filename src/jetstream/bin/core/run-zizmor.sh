@@ -12,10 +12,10 @@ usage() {
 }
 
 persona=auditor
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
     case "$1" in
         --persona)
-            if [ $# -lt 2 ] || [[ ! "$2" =~ ^(regular|pedantic|auditor)$ ]]; then
+            if [[ $# -lt 2 ]] || [[ ! "$2" =~ ^(regular|pedantic|auditor)$ ]]; then
                 usage
                 exit 1
             fi
@@ -31,9 +31,11 @@ done
 
 # The tools this script runs are installed next to it, in .venv/bin.
 PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd):${PATH}"
-cd "$(git rev-parse --show-toplevel)"
+toplevel="$(git rev-parse --show-toplevel)"
+cd "${toplevel}"
 
-if [ -z "$(git ls-files -- .github/workflows .github/actions)" ]; then
+workflows="$(git ls-files -- .github/workflows .github/actions)"
+if [[ -z "${workflows}" ]]; then
     exit 0
 fi
 

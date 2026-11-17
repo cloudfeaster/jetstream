@@ -314,6 +314,13 @@ def test_dco_commits_names_each_unsigned_commit(repo: Path, run: Run) -> None:
     assert "2 commit(s) without a DCO sign-off" in result.stderr
 
 
+def test_dco_commits_fails_a_bad_revision_range(repo: Path, run: Run) -> None:
+    commit(repo, "base", signed=True)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", "--commits", "no-such-base..HEAD")
+    assert result.returncode != 0
+    assert "no-such-base" in result.stderr
+
+
 @pytest.mark.parametrize("args", [[], ["--commits"], ["a", "b"]])
 def test_dco_usage(repo: Path, run: Run, args: list[str]) -> None:
     result: subprocess.CompletedProcess[str] = run(repo, "run-dco.sh", *args)

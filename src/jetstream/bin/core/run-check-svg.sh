@@ -6,14 +6,15 @@
 
 set -euo pipefail
 
-if [ $# != 0 ]; then
+if [[ $# != 0 ]]; then
     echo "usage: $(basename "$0")" >&2
     exit 1
 fi
 
 # The tools this script runs are installed next to it, in .venv/bin.
 PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd):${PATH}"
-cd "$(git rev-parse --show-toplevel)"
+toplevel="$(git rev-parse --show-toplevel)"
+cd "${toplevel}"
 
 # Compare SVGs as canonical XML (C14N 2.0), so formatting differences don't count.
 canonical() {
@@ -23,15 +24,17 @@ canonical() {
 work_dir="$(mktemp -d)"
 trap 'rm -rf "${work_dir}"' EXIT
 
+git ls-files -z -- '*.svg' > "${work_dir}/svg-files"
+
 missing=0
 stale=0
 while IFS= read -r -d '' svg_file; do
     images_dir="$(dirname "${svg_file}")"
-    if [ "$(basename "${images_dir}")" != images ]; then
+    if [[ "$(basename "${images_dir}")" != images ]]; then
         continue
     fi
     d2_file="${images_dir}/d2/$(basename "${svg_file%.svg}").d2"
-    if [ ! -f "${d2_file}" ]; then
+    if [[ ! -f "${d2_file}" ]]; then
         echo "Missing source: ${svg_file} has no D2 source at ${d2_file}" >&2
         missing=$((missing + 1))
         continue
@@ -40,13 +43,15 @@ while IFS= read -r -d '' svg_file; do
         echo "${output}" >&2
         exit 1
     fi
-    if [ "$(canonical "${svg_file}")" != "$(canonical "${work_dir}/generated.svg")" ]; then
+    committed="$(canonical "${svg_file}")"
+    generated="$(canonical "${work_dir}/generated.svg")"
+    if [[ "${committed}" != "${generated}" ]]; then
         echo "Stale SVG: ${svg_file} doesn't match what ${d2_file} compiles to; run run-d2-compile.sh" >&2
         stale=$((stale + 1))
     fi
-done < <(git ls-files -z -- '*.svg')
+done < "${work_dir}/svg-files"
 
-if [ "${missing}" -gt 0 ] || [ "${stale}" -gt 0 ]; then
+if [[ "${missing}" -gt 0 ]] || [[ "${stale}" -gt 0 ]]; then
     echo "SVG check failed: ${missing} missing source(s), ${stale} stale SVG(s)" >&2
     exit 1
 fi
