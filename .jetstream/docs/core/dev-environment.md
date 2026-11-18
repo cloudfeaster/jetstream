@@ -31,12 +31,12 @@ To change one of those files, change it in jetstream, then bump the repo's jetst
 
 | Kind | Examples | Who changes it |
 |---|---|---|
-| **Owned by jetstream** | `cfg4dev.sh`, `.pre-commit-config.yaml`, the tool configs (`mado.toml`, `.yamllint`, `.shellcheckrc`, `.trivy.yaml`, `.jsonlintignore`), `.vscode/`'s `settings.json`, `terminal-init.sh` and `.gitignore`, `.claude/settings.json`, `.github/dependabot.yml`, `.github/workflows/jetstream-*.yaml` and `.jetstream/docs/` | jetstream; `sync` writes them, `check` enforces them |
+| **Owned by jetstream** | `cfg4dev.sh`, `.pre-commit-config.yaml`, the tool configs (`mado.toml`, `.yamllint`, `.shellcheckrc`, `.trivy.yaml`, `.jsonlintignore`), `.vscode/`'s `settings.json`, `terminal-init.sh` and `.gitignore`, `.claude/settings.json`, `.claude/skills/jetstream-*/`, `.github/dependabot.yml`, `.github/workflows/jetstream-*.yaml` and `.jetstream/docs/` | jetstream; `sync` writes them, `check` enforces them |
 | **Owned by the repo** | `cfg4dev.local.sh`, `.trivyignore`, `.gitleaksignore`, `CONTRIBUTING.md`, `CLAUDE.md`, and the repo's own workflows | the repo |
 | **A jetstream block in a repo's file** | `.gitignore`, between `# >>> jetstream` and `# <<< jetstream` | jetstream inside the block, the repo outside it |
 | **Both set values** | `pyproject.toml` | jetstream sets certain keys, such as `requires-python` and `[tool.uv] exclude-newer`, and the repo owns every other key, including keys it adds to jetstream's tables |
 
-jetstream owns `.github/workflows/jetstream-*.yaml` and `.jetstream/docs/` outright: `sync` deletes any file there that the release doesn't write.
+jetstream owns `.github/workflows/jetstream-*.yaml`, `.claude/skills/jetstream-*/` and `.jetstream/docs/` outright: `sync` deletes any file there that the release doesn't write. The repo's own Claude Code skills go in `.claude/skills/` under any other name.
 
 ## The checks
 

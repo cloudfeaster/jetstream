@@ -79,6 +79,8 @@ def test_core_owns_its_files() -> None:
     want: sync.Expected = sync.expected(("core",))
     assert set(want.files) == {
         ".claude/settings.json",
+        ".claude/skills/jetstream-new-feature/SKILL.md",
+        ".claude/skills/jetstream-ship/SKILL.md",
         ".github/dependabot.yml",
         ".github/workflows/jetstream-lint.yaml",
         ".jsonlintignore",
@@ -171,6 +173,28 @@ def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Pat
     assert sync.sync(synced) == [".github/workflows/jetstream-old.yaml (deleted)"]
     assert not (workflows / "jetstream-old.yaml").exists()
     assert (workflows / "deploy.yaml").exists()
+
+
+def test_sync_deletes_jetstream_skills_the_release_does_not_write(synced: Path) -> None:
+    skills: Path = synced / ".claude" / "skills"  # sync wrote jetstream-ship there
+    (skills / "jetstream-old" / "references").mkdir(parents=True)
+    (skills / "jetstream-old" / "SKILL.md").write_text("old\n")
+    (skills / "jetstream-old" / "references" / "notes.md").write_text("old\n")
+    (skills / "deploy").mkdir()
+    (skills / "deploy" / "SKILL.md").write_text("the repo's own\n")
+    assert sync.check(synced) == [
+        ".claude/skills/jetstream-old/SKILL.md isn't written by this jetstream release",
+        ".claude/skills/jetstream-old/references/notes.md isn't written by this jetstream release",
+    ]
+
+    assert sync.sync(synced) == [
+        ".claude/skills/jetstream-old/SKILL.md (deleted)",
+        ".claude/skills/jetstream-old/references/notes.md (deleted)",
+    ]
+    assert not (skills / "jetstream-old").exists()
+    assert (skills / "deploy" / "SKILL.md").exists()
+    assert (skills / "jetstream-ship" / "SKILL.md").exists()
+    assert sync.check(synced) == []
 
 
 def test_sync_replaces_the_docs_as_a_whole(synced: Path) -> None:

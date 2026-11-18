@@ -14,7 +14,7 @@ everything jetstream owns in that repo (decision 6):
 
 ``sync()`` writes them, and ``check()`` lists how the repo differs from them.
 Neither touches anything else, such as the jetstream pin, except that jetstream
-owns two locations outright: ``sync()`` deletes any file there it didn't write.
+owns three locations outright: ``sync()`` deletes any file there it didn't write.
 """
 
 from __future__ import annotations
@@ -36,11 +36,13 @@ PACKS: Final[tuple[str, ...]] = ("core", "python", "website")
 GITIGNORE_START: Final[str] = "# >>> jetstream: written by `jetstream sync`; the repo's own lines go outside this block"
 GITIGNORE_END: Final[str] = "# <<< jetstream"
 
-# A release deletes its generated workflows and docs by not shipping them, so
-# check fails on any file in these locations the release doesn't write, and
-# sync deletes it (decision 6).
+# A release deletes its generated workflows, skills and docs by not shipping
+# them, so check fails on any file in these locations the release doesn't
+# write, and sync deletes it (decision 6).
 WORKFLOWS_DIR: Final[str] = ".github/workflows"
 WORKFLOW_PREFIX: Final[str] = "jetstream-"
+SKILLS_DIR: Final[str] = ".claude/skills"
+SKILL_PREFIX: Final[str] = "jetstream-"
 DOCS_DIR: Final[str] = ".jetstream/docs"
 
 # The first lines of each doc jetstream writes into a repo.
@@ -255,6 +257,9 @@ def stale(root: Path, want: Expected) -> list[str]:
     workflows: Path = root / WORKFLOWS_DIR
     if workflows.is_dir():
         found.extend(workflows.glob(f"{WORKFLOW_PREFIX}*"))
+    skills: Path = root / SKILLS_DIR
+    if skills.is_dir():
+        found.extend(skills.glob(f"{SKILL_PREFIX}*/**/*"))
     docs: Path = root / DOCS_DIR
     if docs.is_dir():
         found.extend(docs.rglob("*"))
@@ -327,6 +332,10 @@ def sync(root: Path) -> list[str]:
         (root / path).unlink()
         changed.append(f"{path} (deleted)")
     remove_empty_directories(root / DOCS_DIR)
+    for skill in (root / SKILLS_DIR).glob(f"{SKILL_PREFIX}*"):
+        remove_empty_directories(skill)
+        if skill.is_dir() and not any(skill.iterdir()):
+            skill.rmdir()
 
     gitignore: Path = root / ".gitignore"
     text: str = gitignore.read_text() if gitignore.is_file() else ""
