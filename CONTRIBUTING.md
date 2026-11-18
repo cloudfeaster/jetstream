@@ -35,6 +35,8 @@ The commits decide the version. Before 1.0.0, a breaking change (`feat!:`) or a 
 
 Two org rulesets protect the tags: only the `cloudfeaster-release` App can create a tag, and no one, the App and org owners included, can move or delete one. So a release's only source is release-please, and a tag can't be created by hand, even by an owner. If a release fails between merging the release PR and tagging, rerun the `release-please` workflow. The rulesets are set and checked nightly by `cloudfeaster/.github-private` (`docs/org-hardening.md`, section 8). They replace a `vX.Y.Z` tag name pattern, which GitHub Team doesn't enforce (decision 9 in #1).
 
+A release is only its tag and its GitHub Release notes. Never attach a built wheel or any other file to a release, publish jetstream to a package index, or publish an image with jetstream installed, without a licensing review first. jetstream not distributing the tools it installs is what lets it include them whatever their license ([How jetstream is distributed](README.md#how-jetstream-is-distributed)). The `release-assets` workflow fails if a release ever has a file attached.
+
 ### Setting up the release App
 
 release-please acts as a GitHub App, `cloudfeaster-release`, rather than with the workflow's `GITHUB_TOKEN`, because GitHub starts no workflows from anything `GITHUB_TOKEN` does. The release PR would then never get the `jetstream lint` check that the org ruleset requires, and could never merge. One App serves every repo that releases.
