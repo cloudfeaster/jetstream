@@ -31,6 +31,8 @@ To sign with an existing SSH key instead (`gpg.format = ssh`), see [GitHub's doc
 
 ## Steps
 
+In Claude Code, `/jetstream-new-feature` does steps 1 to 3 and `/jetstream-ship` does steps 2 to 5, stopping for your go-ahead before it merges.
+
 1. **Branch** from an up-to-date `main`, with a descriptive name such as `feat/add-export` or `fix/date-parsing`:
 
     ```bash
