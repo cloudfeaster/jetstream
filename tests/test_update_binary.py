@@ -9,7 +9,7 @@ import types
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, NoReturn
 
 import pytest
 import tomlkit
@@ -57,7 +57,7 @@ def sha256sums(version: str, linux: str = "new1", macos: str = "new2") -> str:
     return f"{linux}  tool-{version}-linux-amd64.tar.gz\n{macos} *dist/tool-{version}-macos-arm64.tar.gz\n"
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def downloads(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     """Release assets by URL; the checksums for 1.1.0 by default."""
     files: dict[str, str] = {"https://example.test/1.1.0/SHA256SUMS": sha256sums("1.1.0")}
@@ -73,11 +73,11 @@ def downloads(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 
 
 @pytest.fixture
-def api(monkeypatch: pytest.MonkeyPatch, downloads: dict[str, str]) -> dict[str, Any]:  # noqa: ARG001
+def api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     """Return GitHub API responses by path, faked, with a 404 for any other path."""
     responses: dict[str, Any] = {}
 
-    def fake_github_api(path: str) -> Any:  # noqa: ANN401
+    def fake_github_api(path: str) -> dict[str, Any]:
         if path not in responses:
             msg: str = f"GitHub API {path}: 404 Not Found"
             raise update_binary.UpdateError(msg)
@@ -173,7 +173,8 @@ def test_parse_checksums() -> None:
     }
 
 
-def test_update_fails_on_unknown_tool(api: dict[str, Any]) -> None:  # noqa: ARG001
+@pytest.mark.usefixtures("api")
+def test_update_fails_on_unknown_tool() -> None:
     """Naming a tool that isn't in binaries.toml is an error."""
     with pytest.raises(update_binary.UpdateError, match="no tool nope"):
         update_binary.update(tomlkit.parse(PINS), "nope", None, NOW)
@@ -187,7 +188,7 @@ def test_update_fails_on_unknown_tool(api: dict[str, Any]) -> None:  # noqa: ARG
         ("1.1.0", 8, True),
     ],
 )
-def test_check(api: dict[str, Any], latest: str, days_old: int, stale: bool) -> None:  # noqa: FBT001 (a parameter)
+def test_check(api: dict[str, Any], latest: str, days_old: int, *, stale: bool) -> None:
     """A pin is stale only when a newer release is past the cooldown."""
     api["repos/owner/tool/releases/latest"] = release(latest, days_old)
     assert bool(update_binary.check(tomlkit.parse(PINS), NOW)) == stale
@@ -255,7 +256,7 @@ def http_error(code: int, reason: str, body: bytes, headers: dict[str, str]) -> 
 def test_github_api_errors_say_why(monkeypatch: pytest.MonkeyPatch, error: urllib.error.HTTPError, expected: str) -> None:
     """An API error adds GitHub's message and the rate-limit headers, and copes with a body that isn't JSON."""
 
-    def refuse(*_args: Any, **_kwargs: Any) -> None:  # noqa: ANN401
+    def refuse(*_args: object, **_kwargs: object) -> NoReturn:
         raise error
 
     monkeypatch.setattr(update_binary.urllib.request, "urlopen", refuse)
@@ -278,13 +279,14 @@ def test_github_api_retries_without_the_token_only_for_an_ip_allow_list(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     body: bytes,
-    retried: bool,  # noqa: FBT001 (a parameter)
+    *,
+    retried: bool,
 ) -> None:
     """Only an IP allow list refusal is retried without GITHUB_TOKEN; other 403s fail."""
     monkeypatch.setenv("GITHUB_TOKEN", "a-token")
     sent: list[str | None] = []  # each request's Authorization header
 
-    def fake_urlopen(request: urllib.request.Request, **_kwargs: Any) -> io.BytesIO:  # noqa: ANN401
+    def fake_urlopen(request: urllib.request.Request, **_kwargs: object) -> io.BytesIO:
         sent.append(request.get_header("Authorization"))
         if request.has_header("Authorization"):
             raise http_error(403, "Forbidden", body, {"x-ratelimit-remaining": "4976"})

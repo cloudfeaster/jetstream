@@ -30,7 +30,7 @@ import tomllib
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import IO, Any, Final, NamedTuple, NoReturn
+from typing import IO, Any, Final, NamedTuple, NoReturn, override
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -196,7 +196,8 @@ class JetstreamBuildHook(BuildHookInterface):
 
     PLUGIN_NAME: str = "custom"  # overrides BuildHookInterface, so not Final
 
-    def initialize(self, version: str, build_data: dict[str, Any]) -> None:  # noqa: ARG002
+    @override
+    def initialize(self, version: str, build_data: dict[str, Any]) -> None:
         """Download, verify and extract the binaries before hatchling builds the wheel."""
         if self.target_name != "wheel":
             return
@@ -212,7 +213,8 @@ class JetstreamBuildHook(BuildHookInterface):
         for script in run_scripts(Path(self.root)):
             build_data["shared_scripts"][str(script)] = script.name
 
-    def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:  # noqa: ARG002
+    @override
+    def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:
         """Remove the extracted binaries once the wheel is written."""
         work_dir: Path | None = getattr(self, "_work_dir", None)
         if work_dir is not None:

@@ -27,8 +27,18 @@ type Run = Callable[..., subprocess.CompletedProcess[str]]
 # these on PATH, so a tool installed on this machine can't stand in for the
 # one jetstream installs.
 SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
-    "bash", "basename", "cat", "cmp", "dirname", "env", "git", "grep", "mktemp", "rm", "sed",
-)  # fmt: skip
+    "bash",
+    "basename",
+    "cat",
+    "cmp",
+    "dirname",
+    "env",
+    "git",
+    "grep",
+    "mktemp",
+    "rm",
+    "sed",
+)
 
 
 def git(repo: Path, *args: str) -> str:

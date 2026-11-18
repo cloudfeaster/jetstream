@@ -24,6 +24,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Final
 
@@ -38,22 +39,22 @@ class UpdateError(Exception):
     """A problem to report in one line."""
 
 
-def github_api(path: str, *, authenticate: bool = True) -> Any:  # noqa: ANN401 (JSON)
+def github_api(path: str, *, authenticate: bool = True) -> dict[str, Any]:
     """GET ``path`` from the GitHub REST API, with GITHUB_TOKEN if it's set and ``authenticate``."""
-    request: urllib.request.Request = urllib.request.Request(f"https://api.github.com/{path}")
-    request.add_header("Accept", "application/vnd.github+json")
+    headers: dict[str, str] = {"Accept": "application/vnd.github+json"}
     token: str | None = os.environ.get("GITHUB_TOKEN") if authenticate else None
     if token:
-        request.add_header("Authorization", f"Bearer {token}")
+        headers["Authorization"] = f"Bearer {token}"
     try:
-        with urllib.request.urlopen(request, timeout=API_TIMEOUT_SECONDS) as response:  # noqa: S310
+        # The URL is written out here, so ruff's S310 can see it's https.
+        with urllib.request.urlopen(urllib.request.Request(f"https://api.github.com/{path}", headers=headers), timeout=API_TIMEOUT_SECONDS) as response:
             return json.load(response)
     except urllib.error.HTTPError as e:
         error: str = f"GitHub API {path}: {e.code} {e.reason}{why(e)}"
         # An org with an IP allow list (aquasecurity, for trivy) refuses a token from an IP
         # not on its list, such as a GitHub runner's, even for a public repo; it doesn't
         # refuse a request without one (https://github.com/aquasecurity/trivy/issues/10567).
-        if token and e.code == 403 and "IP allow list" in error:  # noqa: PLR2004
+        if token and e.code == HTTPStatus.FORBIDDEN and "IP allow list" in error:
             sys.stderr.write(f"*** {error}; retrying without GITHUB_TOKEN\n")
             return github_api(path, authenticate=False)
         raise UpdateError(error) from e
@@ -121,10 +122,10 @@ def parse_checksums(text: str) -> dict[str, str]:
     """Parse ``sha256sum`` output (``<hex>  [*]<file>`` per line) into {file name: SHA-256}."""
     result: dict[str, str] = {}
     for line in text.splitlines():
-        parts: list[str] = line.split(maxsplit=1)
-        if len(parts) == 2:  # noqa: PLR2004 (hash and name)
-            name: str = parts[1].strip().lstrip("*").rsplit("/", 1)[-1]
-            result[name] = parts[0].lower()
+        match line.split(maxsplit=1):
+            case [digest, path]:
+                name: str = path.strip().lstrip("*").rsplit("/", 1)[-1]
+                result[name] = digest.lower()
     return result
 
 

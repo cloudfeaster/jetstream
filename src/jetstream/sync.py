@@ -238,7 +238,7 @@ def synced_gitignore(text: str, block: str) -> str:
 # --- pyproject.toml
 
 
-def unwrap(value: Any) -> Any:  # noqa: ANN401 (TOML values)
+def unwrap(value: object) -> object:
     """Return a tomlkit value as plain Python, for comparison."""
     return value.unwrap() if isinstance(value, tomlkit.items.Item) else value
 
@@ -253,7 +253,7 @@ def get_key(document: tomlkit.TOMLDocument, path: KeyPath) -> tuple[bool, Any]:
     return True, unwrap(node)
 
 
-def set_key(document: tomlkit.TOMLDocument, path: KeyPath, value: Any) -> None:  # noqa: ANN401
+def set_key(document: tomlkit.TOMLDocument, path: KeyPath, value: object) -> None:
     """Set ``path`` in ``document`` to ``value``, adding tables as needed and keeping the rest as it is."""
     node: Any = document
     for depth, key in enumerate(path[:-1]):
@@ -262,8 +262,8 @@ def set_key(document: tomlkit.TOMLDocument, path: KeyPath, value: Any) -> None: 
             node[key] = tomlkit.table(is_super_table=depth < len(path) - 2)
         node = node[key]
     item: Any = tomlkit.item(value)
-    if isinstance(item, tomlkit.items.Array) and len(value) > 1:
-        item.multiline(True)  # noqa: FBT003 (tomlkit's API)
+    if isinstance(item, tomlkit.items.Array) and len(item) > 1:
+        item.multiline(multiline=True)
     node[path[-1]] = item
 
 
