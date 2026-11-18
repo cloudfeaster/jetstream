@@ -7,6 +7,7 @@ import importlib.util
 import io
 import types
 import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Final
 
@@ -242,6 +243,42 @@ def test_github_api_errors_say_why(monkeypatch: pytest.MonkeyPatch, error: urlli
     with pytest.raises(update_binary.UpdateError) as raised:
         update_binary.github_api("x")
     assert str(raised.value) == expected
+
+
+IP_ALLOW_LIST: Final[bytes] = (
+    b'{"message": "Although you appear to have the correct authorization credentials, the `owner` organization '
+    b'has an IP allow list enabled, and your IP address is not permitted to access this resource."}'
+)
+
+
+@pytest.mark.parametrize(
+    ("body", "retried"),
+    [
+        (IP_ALLOW_LIST, True),
+        (b'{"message": "API rate limit exceeded for installation."}', False),
+    ],
+)
+def test_github_api_retries_without_the_token_only_for_an_ip_allow_list(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], body: bytes, retried: bool,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "a-token")
+    sent: list[str | None] = []  # each request's Authorization header
+
+    def fake_urlopen(request: urllib.request.Request, **_kwargs: Any) -> io.BytesIO:  # noqa: ANN401
+        sent.append(request.get_header("Authorization"))
+        if request.has_header("Authorization"):
+            raise http_error(403, "Forbidden", body, {"x-ratelimit-remaining": "4976"})
+        return io.BytesIO(b'{"tag_name": "v1.0.0"}')
+
+    monkeypatch.setattr(update_binary.urllib.request, "urlopen", fake_urlopen)
+    if retried:
+        assert update_binary.github_api("x") == {"tag_name": "v1.0.0"}
+        assert sent == ["Bearer a-token", None]
+        assert "retrying without GITHUB_TOKEN" in capsys.readouterr().err
+    else:
+        with pytest.raises(update_binary.UpdateError, match="rate limit exceeded"):
+            update_binary.github_api("x")
+        assert sent == ["Bearer a-token"]
 
 
 def test_version_from_tag() -> None:

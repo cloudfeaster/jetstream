@@ -38,17 +38,25 @@ class UpdateError(Exception):
     """A problem to report in one line."""
 
 
-def github_api(path: str) -> Any:  # noqa: ANN401 (JSON)
-    """GET ``path`` from the GitHub REST API."""
+def github_api(path: str, authenticate: bool = True) -> Any:  # noqa: ANN401 (JSON)
+    """GET ``path`` from the GitHub REST API, with GITHUB_TOKEN if it's set and ``authenticate``."""
     request: urllib.request.Request = urllib.request.Request(f"https://api.github.com/{path}")  # noqa: S310
     request.add_header("Accept", "application/vnd.github+json")
-    if token := os.environ.get("GITHUB_TOKEN"):
+    token: str | None = os.environ.get("GITHUB_TOKEN") if authenticate else None
+    if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(request, timeout=API_TIMEOUT_SECONDS) as response:  # noqa: S310
             return json.load(response)
     except urllib.error.HTTPError as e:
-        raise UpdateError(f"GitHub API {path}: {e.code} {e.reason}{why(e)}") from e
+        error: str = f"GitHub API {path}: {e.code} {e.reason}{why(e)}"
+        # An org with an IP allow list (aquasecurity, for trivy) refuses a token from an IP
+        # not on its list, such as a GitHub runner's, even for a public repo; it doesn't
+        # refuse a request without one.
+        if token and e.code == 403 and "IP allow list" in error:  # noqa: PLR2004
+            print(f"*** {error}; retrying without GITHUB_TOKEN", file=sys.stderr)
+            return github_api(path, authenticate=False)
+        raise UpdateError(error) from e
     except urllib.error.URLError as e:
         raise UpdateError(f"GitHub API {path}: {e.reason}") from e
 
