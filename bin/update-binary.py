@@ -52,7 +52,7 @@ def github_api(path: str, authenticate: bool = True) -> Any:  # noqa: ANN401 (JS
         error: str = f"GitHub API {path}: {e.code} {e.reason}{why(e)}"
         # An org with an IP allow list (aquasecurity, for trivy) refuses a token from an IP
         # not on its list, such as a GitHub runner's, even for a public repo; it doesn't
-        # refuse a request without one.
+        # refuse a request without one (https://github.com/aquasecurity/trivy/issues/10567).
         if token and e.code == 403 and "IP allow list" in error:  # noqa: PLR2004
             print(f"*** {error}; retrying without GITHUB_TOKEN", file=sys.stderr)
             return github_api(path, authenticate=False)
