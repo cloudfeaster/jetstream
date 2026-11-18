@@ -38,19 +38,48 @@ class UpdateError(Exception):
     """A problem to report in one line."""
 
 
-def github_api(path: str) -> Any:  # noqa: ANN401 (JSON)
-    """GET ``path`` from the GitHub REST API."""
+def github_api(path: str, authenticate: bool = True) -> Any:  # noqa: ANN401 (JSON)
+    """GET ``path`` from the GitHub REST API, with GITHUB_TOKEN if it's set and ``authenticate``."""
     request: urllib.request.Request = urllib.request.Request(f"https://api.github.com/{path}")  # noqa: S310
     request.add_header("Accept", "application/vnd.github+json")
-    if token := os.environ.get("GITHUB_TOKEN"):
+    token: str | None = os.environ.get("GITHUB_TOKEN") if authenticate else None
+    if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(request, timeout=API_TIMEOUT_SECONDS) as response:  # noqa: S310
             return json.load(response)
     except urllib.error.HTTPError as e:
-        raise UpdateError(f"GitHub API {path}: {e.code} {e.reason}") from e
+        error: str = f"GitHub API {path}: {e.code} {e.reason}{why(e)}"
+        # An org with an IP allow list (aquasecurity, for trivy) refuses a token from an IP
+        # not on its list, such as a GitHub runner's, even for a public repo; it doesn't
+        # refuse a request without one (https://github.com/aquasecurity/trivy/issues/10567).
+        if token and e.code == 403 and "IP allow list" in error:  # noqa: PLR2004
+            print(f"*** {error}; retrying without GITHUB_TOKEN", file=sys.stderr)
+            return github_api(path, authenticate=False)
+        raise UpdateError(error) from e
     except urllib.error.URLError as e:
         raise UpdateError(f"GitHub API {path}: {e.reason}") from e
+
+
+def why(error: urllib.error.HTTPError) -> str:
+    """Return GitHub's reason for refusing a request, and its rate-limit headers, to add to the error."""
+    reason: str = ""
+    try:
+        message: object = json.loads(error.read()).get("message")
+    except (ValueError, AttributeError):
+        message = None
+    if isinstance(message, str) and message:
+        reason = f": {message}"
+    limits: list[str] = []
+    if (remaining := error.headers.get("x-ratelimit-remaining")) is not None:
+        limits.append(f"{remaining} requests left")
+    if (reset := error.headers.get("x-ratelimit-reset")) is not None and remaining == "0":
+        limits.append(f"resets {datetime.datetime.fromtimestamp(int(reset), datetime.UTC):%Y-%m-%d %H:%M} UTC")
+    if (retry_after := error.headers.get("retry-after")) is not None:
+        limits.append(f"retry after {retry_after}s")
+    if limits:
+        reason += f" (rate limit: {', '.join(limits)})"
+    return reason
 
 
 def version_from_tag(tag_template: str, tag: str) -> str:
@@ -153,13 +182,20 @@ def update(pins: tomlkit.TOMLDocument, tool: str, version: str | None, now: date
 
 
 def check(pins: tomlkit.TOMLDocument, now: datetime.datetime, verbose: bool = False) -> list[str]:
-    """Return a line for each tool whose latest release past the cooldown isn't the pinned one.
+    """Return a line for each tool whose latest release past the cooldown isn't the pinned one, or that couldn't be checked.
 
     With ``verbose``, also print each tool's pinned and latest versions, and what that means.
     """
     stale: list[str] = []
     for tool, pin in pins.items():
-        release: dict[str, Any] = github_api(f"repos/{pin['repo']}/releases/latest")
+        try:
+            release: dict[str, Any] = github_api(f"repos/{pin['repo']}/releases/latest")
+        except UpdateError as e:
+            # Check the other tools anyway, so one failure doesn't hide what they'd report.
+            stale.append(f"{tool}: couldn't check: {e}")
+            if verbose:
+                print(stale[-1])
+            continue
         latest: str = version_from_tag(pin["tag"], release["tag_name"])
         status: str
         if latest == pin["version"]:

@@ -1,9 +1,13 @@
 """Tests for bin/update-binary.py."""
 
 import datetime
+import email.message
 import importlib.machinery
 import importlib.util
+import io
 import types
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Final
 
@@ -194,6 +198,87 @@ def test_check_is_quiet_by_default(api: dict[str, Any], capsys: pytest.CaptureFi
     api["repos/owner/tool/releases/latest"] = release("1.0.0", 30)
     update_binary.check(tomlkit.parse(PINS), NOW)
     assert capsys.readouterr().out == ""
+
+
+def test_check_reports_every_tool_even_when_one_fails(api: dict[str, Any], capsys: pytest.CaptureFixture[str]) -> None:
+    pins: str = PINS + PINS.replace("[tool", "[other").replace("owner/tool", "owner/other").split("\n", 2)[2]
+    api["repos/owner/other/releases/latest"] = release("1.0.0", 30)  # owner/tool isn't there: a 404
+    problems: list[str] = update_binary.check(tomlkit.parse(pins), NOW, verbose=True)
+    assert problems == ["tool: couldn't check: GitHub API repos/owner/tool/releases/latest: 404 Not Found"]
+    assert capsys.readouterr().out == (
+        "tool: couldn't check: GitHub API repos/owner/tool/releases/latest: 404 Not Found\n"
+        "other: pinned 1.0.0; latest 1.0.0 (2026-10-18): up to date\n"
+    )
+
+
+def http_error(code: int, reason: str, body: bytes, headers: dict[str, str]) -> urllib.error.HTTPError:
+    message: email.message.Message = email.message.Message()
+    for name, value in headers.items():
+        message[name] = value
+    return urllib.error.HTTPError("https://api.github.com/x", code, reason, message, io.BytesIO(body))
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (
+            http_error(403, "Forbidden", b'{"message": "API rate limit exceeded for installation."}',
+                       {"x-ratelimit-remaining": "0", "x-ratelimit-reset": "1795395600"}),
+            "GitHub API x: 403 Forbidden: API rate limit exceeded for installation. "
+            "(rate limit: 0 requests left, resets 2026-11-23 01:00 UTC)",
+        ),
+        (
+            http_error(403, "Forbidden", b'{"message": "You have exceeded a secondary rate limit."}',
+                       {"x-ratelimit-remaining": "990", "retry-after": "60"}),
+            "GitHub API x: 403 Forbidden: You have exceeded a secondary rate limit. (rate limit: 990 requests left, retry after 60s)",
+        ),
+        (http_error(403, "Forbidden", b"<html>not JSON</html>", {}), "GitHub API x: 403 Forbidden"),
+    ],
+)
+def test_github_api_errors_say_why(monkeypatch: pytest.MonkeyPatch, error: urllib.error.HTTPError, expected: str) -> None:
+    def refuse(*_args: Any, **_kwargs: Any) -> None:  # noqa: ANN401
+        raise error
+
+    monkeypatch.setattr(update_binary.urllib.request, "urlopen", refuse)
+    with pytest.raises(update_binary.UpdateError) as raised:
+        update_binary.github_api("x")
+    assert str(raised.value) == expected
+
+
+IP_ALLOW_LIST: Final[bytes] = (
+    b'{"message": "Although you appear to have the correct authorization credentials, the `owner` organization '
+    b'has an IP allow list enabled, and your IP address is not permitted to access this resource."}'
+)
+
+
+@pytest.mark.parametrize(
+    ("body", "retried"),
+    [
+        (IP_ALLOW_LIST, True),
+        (b'{"message": "API rate limit exceeded for installation."}', False),
+    ],
+)
+def test_github_api_retries_without_the_token_only_for_an_ip_allow_list(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], body: bytes, retried: bool,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "a-token")
+    sent: list[str | None] = []  # each request's Authorization header
+
+    def fake_urlopen(request: urllib.request.Request, **_kwargs: Any) -> io.BytesIO:  # noqa: ANN401
+        sent.append(request.get_header("Authorization"))
+        if request.has_header("Authorization"):
+            raise http_error(403, "Forbidden", body, {"x-ratelimit-remaining": "4976"})
+        return io.BytesIO(b'{"tag_name": "v1.0.0"}')
+
+    monkeypatch.setattr(update_binary.urllib.request, "urlopen", fake_urlopen)
+    if retried:
+        assert update_binary.github_api("x") == {"tag_name": "v1.0.0"}
+        assert sent == ["Bearer a-token", None]
+        assert "retrying without GITHUB_TOKEN" in capsys.readouterr().err
+    else:
+        with pytest.raises(update_binary.UpdateError, match="rate limit exceeded"):
+            update_binary.github_api("x")
+        assert sent == ["Bearer a-token"]
 
 
 def test_version_from_tag() -> None:
