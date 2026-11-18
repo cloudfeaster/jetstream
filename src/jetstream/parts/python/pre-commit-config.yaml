@@ -1,0 +1,20 @@
+---
+# The python pack's hooks. `jetstream sync` appends what follows the marker
+# to core's hooks list; the lines above it make this file valid YAML.
+repos:
+  - repo: local
+    hooks:
+      # >>> jetstream: appended
+      - id: ruff
+        name: ruff (Python lint and format check)
+        entry: run-ruff.sh
+        language: system
+        pass_filenames: false
+        files: '(\.py|^pyproject\.toml)$'
+
+      - id: ty
+        name: ty (Python type check)
+        entry: run-ty.sh
+        language: system
+        pass_filenames: false
+        files: '(\.py|^pyproject\.toml|^uv\.lock)$'

@@ -146,8 +146,7 @@ def download(binary: Binary, cache_dir: Path) -> Path:
                 out.write(chunk)
         if digest.hexdigest() != binary.sha256:
             fail(
-                f"SHA-256 mismatch for {binary.name} {binary.version} from {binary.url}: "
-                f"expected {binary.sha256}, got {digest.hexdigest()}",
+                f"SHA-256 mismatch for {binary.name} {binary.version} from {binary.url}: expected {binary.sha256}, got {digest.hexdigest()}",
             )
         partial.replace(cached)
     except (urllib.error.URLError, OSError) as e:

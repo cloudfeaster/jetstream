@@ -10,6 +10,7 @@ Guidance for Claude Code in the jetstream repo. jetstream follows the convention
 @.jetstream/docs/core/json.md
 @.jetstream/docs/core/diagrams.md
 @.jetstream/docs/core/licensing.md
+@.jetstream/docs/python/python.md
 
 ## jetstream itself
 

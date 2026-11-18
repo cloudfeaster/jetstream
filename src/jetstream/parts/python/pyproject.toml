@@ -1,0 +1,34 @@
+# The python pack's keys in a repo's pyproject.toml (decision 7). `jetstream
+# sync` sets each one to this value; every other key belongs to the repo.
+
+# ruff (run-ruff.sh). The repo can set [tool.ruff] exclude, and add rules
+# through ruff's extend-* keys; jetstream owns each list it sets as a whole.
+[tool.ruff]
+line-length = 256
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "S101",    # assert: tests use it
+    "B011",    # assert False
+    "PT015",   # an assertion that always fails
+    "SLF001",  # private member access
+    "D203",    # conflicts with D211 (no blank line before a class docstring)
+    "D213",    # conflicts with D212 (a multi-line summary starts on the first line)
+    "COM812",  # missing trailing comma: conflicts with the formatter
+    "TID252",  # relative imports keep a package self-contained
+    "CPY001",  # copyright is stated once, in LICENSE (licensing.md)
+]
+
+[tool.ruff.lint.pylint]
+max-statements = 100
+max-args = 12
+max-returns = 20
+max-branches = 30
+
+[tool.ruff.lint.mccabe]
+max-complexity = 30
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 72

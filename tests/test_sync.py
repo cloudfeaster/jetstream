@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import pytest
+import yaml
 
 from jetstream import cli, sync
 
@@ -25,21 +26,23 @@ packs = ["core"]
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    """A git repo with a pyproject.toml selecting the core pack, never synced."""
+    """Return a git repo with a pyproject.toml selecting the core pack, never synced."""
     repo: Path = tmp_path / "repo"
     repo.mkdir()
-    subprocess.run(["git", "init", "--quiet", str(repo)], check=True)  # noqa: S607
+    subprocess.run(["git", "init", "--quiet", str(repo)], check=True)  # noqa: S603, S607
     (repo / "pyproject.toml").write_text(PYPROJECT)
     return repo
 
 
 @pytest.fixture
 def synced(repo: Path) -> Path:
+    """Return ``repo`` after ``jetstream sync``."""
     sync.sync(repo)
     return repo
 
 
 def pyproject_of(repo: Path) -> dict[str, Any]:
+    """Return ``repo``'s parsed pyproject.toml."""
     return tomllib.loads((repo / "pyproject.toml").read_text())
 
 
@@ -56,6 +59,7 @@ def pyproject_of(repo: Path) -> dict[str, Any]:
     ],
 )
 def test_read_packs_rejects_bad_packs(repo: Path, packs: str | None, message: str) -> None:
+    """A missing, malformed or unknown pack list, or one without core, is an error."""
     text: str = PYPROJECT.replace('packs = ["core"]', "" if packs is None else f"packs = {packs}")
     (repo / "pyproject.toml").write_text(text)
     with pytest.raises(sync.SyncError, match=message.replace("[", r"\[").replace("(", r"\(").replace(")", r"\)")):
@@ -63,12 +67,14 @@ def test_read_packs_rejects_bad_packs(repo: Path, packs: str | None, message: st
 
 
 def test_read_packs_puts_packs_in_order(repo: Path) -> None:
+    """Packs come back in PACKS order, whatever order the repo lists them in."""
     (repo / "pyproject.toml").write_text(PYPROJECT.replace('["core"]', '["website", "core", "python"]'))
     assert sync.read_packs(repo) == ("core", "python", "website")
 
 
 def test_read_packs_needs_a_pyproject(tmp_path: Path) -> None:
-    with pytest.raises(sync.SyncError, match="no pyproject.toml"):
+    """A repo with no pyproject.toml is an error."""
+    with pytest.raises(sync.SyncError, match=r"no pyproject.toml"):
         sync.read_packs(tmp_path)
 
 
@@ -76,6 +82,7 @@ def test_read_packs_needs_a_pyproject(tmp_path: Path) -> None:
 
 
 def test_core_owns_its_files() -> None:
+    """The core pack writes exactly these files, its docs, its .gitignore block and its pyproject.toml keys."""
     want: sync.Expected = sync.expected(("core",))
     assert set(want.files) == {
         ".claude/settings.json",
@@ -106,10 +113,29 @@ def test_core_owns_its_files() -> None:
     assert want.pyproject_keys[("tool", "uv", "exclude-newer")] == "7 days"
 
 
+# --- what the python pack adds
+
+
+def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
+    """The python pack's hooks join core's list as valid YAML, and its docs and keys are added to core's."""
+    want: sync.Expected = sync.expected(("core", "python"))
+    config: dict[str, Any] = yaml.safe_load(want.files[".pre-commit-config.yaml"].content)
+    hook_ids: list[str] = [hook["id"] for hook in config["repos"][0]["hooks"]]
+    assert hook_ids[0] == "jetstream-check"  # core's hooks come first, in the same list
+    assert hook_ids[-2:] == ["ruff", "ty"]
+    text: str = want.files[".pre-commit-config.yaml"].content.decode()
+    assert text.count("repos:") == 1  # only what follows the python part's marker is appended
+    assert sync.PART_MARKER not in text
+    assert ".jetstream/docs/python/python.md" in want.files
+    assert want.pyproject_keys[("tool", "ruff", "lint", "select")] == ["ALL"]
+    assert want.pyproject_keys[("tool", "uv", "exclude-newer")] == "7 days"  # core's keys too
+
+
 # --- sync, then check
 
 
 def test_sync_writes_everything_and_check_then_passes(repo: Path) -> None:
+    """After sync, check passes and a second sync changes nothing."""
     assert sync.check(repo) != []
     changed: list[str] = sync.sync(repo)
     assert ".pre-commit-config.yaml" in changed
@@ -120,6 +146,7 @@ def test_sync_writes_everything_and_check_then_passes(repo: Path) -> None:
 
 
 def test_sync_adds_missing_keys_and_keeps_the_repos(repo: Path) -> None:
+    """Syncing adds jetstream's keys after the repo's, without touching the repo's keys or comments."""
     sync.sync(repo)
     text: str = (repo / "pyproject.toml").read_text()
     assert text.startswith(PYPROJECT)  # the repo's keys and comments are untouched
@@ -132,6 +159,7 @@ def test_sync_adds_missing_keys_and_keeps_the_repos(repo: Path) -> None:
 
 
 def test_check_names_a_wrong_key_and_sync_fixes_only_that(synced: Path) -> None:
+    """A changed jetstream key is named with both values, and sync puts back only that key."""
     pyproject: Path = synced / "pyproject.toml"
     pyproject.write_text(pyproject.read_text().replace('exclude-newer = "7 days"', 'exclude-newer = "1 day"  # faster'))
     assert sync.check(synced) == ['pyproject.toml: [tool.uv] exclude-newer is "1 day"; jetstream sets "7 days"']
@@ -142,6 +170,7 @@ def test_check_names_a_wrong_key_and_sync_fixes_only_that(synced: Path) -> None:
 
 
 def test_a_repo_can_add_keys_to_jetstreams_tables(synced: Path) -> None:
+    """A key the repo adds to one of jetstream's tables isn't a difference."""
     pyproject: Path = synced / "pyproject.toml"
     pyproject.write_text(pyproject.read_text().replace("[tool.uv]\n", '[tool.uv]\ncache-keys = [{file = "x"}]\n'))
     assert sync.check(synced) == []
@@ -149,12 +178,14 @@ def test_a_repo_can_add_keys_to_jetstreams_tables(synced: Path) -> None:
 
 
 def test_check_names_a_missing_key(synced: Path) -> None:
+    """A deleted jetstream key is named with the value jetstream sets."""
     pyproject: Path = synced / "pyproject.toml"
     pyproject.write_text(pyproject.read_text().replace('required-version = ">=0.13.5"\n', ""))
     assert sync.check(synced) == ['pyproject.toml: [tool.uv] required-version is missing; jetstream sets ">=0.13.5"']
 
 
 def test_check_names_changed_missing_and_non_executable_files(synced: Path) -> None:
+    """Each kind of difference in an owned file is named, and syncing fixes each."""
     (synced / "mado.toml").write_text("changed\n")
     (synced / ".yamllint").unlink()
     (synced / "cfg4dev.sh").chmod(0o644)
@@ -168,6 +199,7 @@ def test_check_names_changed_missing_and_non_executable_files(synced: Path) -> N
 
 
 def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Path) -> None:
+    """A jetstream-*.yaml workflow the release doesn't write is deleted; the repo's own workflows are kept."""
     workflows: Path = synced / ".github" / "workflows"  # sync wrote jetstream-lint.yaml there
     (workflows / "jetstream-old.yaml").write_text("old\n")
     (workflows / "deploy.yaml").write_text("the repo's own\n")
@@ -179,6 +211,7 @@ def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Pat
 
 
 def test_sync_deletes_jetstream_skills_the_release_does_not_write(synced: Path) -> None:
+    """A jetstream-* skill the release doesn't write is deleted, folders and all; the repo's own skills are kept."""
     skills: Path = synced / ".claude" / "skills"  # sync wrote jetstream-ship there
     (skills / "jetstream-old" / "references").mkdir(parents=True)
     (skills / "jetstream-old" / "SKILL.md").write_text("old\n")
@@ -201,6 +234,7 @@ def test_sync_deletes_jetstream_skills_the_release_does_not_write(synced: Path) 
 
 
 def test_sync_replaces_the_docs_as_a_whole(synced: Path) -> None:
+    """Syncing rewrites an edited doc, and deletes any doc or pack folder the release doesn't write."""
     docs: Path = synced / ".jetstream" / "docs"
     (docs / "core" / "markdown.md").write_text("edited\n")
     (docs / "core" / "old.md").write_text("# Old\n")
@@ -226,6 +260,7 @@ def test_sync_replaces_the_docs_as_a_whole(synced: Path) -> None:
 
 
 def test_sync_puts_the_block_first_and_keeps_the_repos_lines(repo: Path) -> None:
+    """In a .gitignore with no block, sync puts the block first, then the repo's lines."""
     (repo / ".gitignore").write_text("/output/\n")
     sync.sync(repo)
     text: str = (repo / ".gitignore").read_text()
@@ -233,6 +268,7 @@ def test_sync_puts_the_block_first_and_keeps_the_repos_lines(repo: Path) -> None
 
 
 def test_sync_replaces_only_the_block(synced: Path) -> None:
+    """A changed block is replaced, and the repo's lines either side are kept."""
     gitignore: Path = synced / ".gitignore"
     block: str = gitignore.read_text()
     gitignore.write_text("/before/\n" + block.replace(".venv/\n", "") + "/after/\n")
@@ -243,6 +279,7 @@ def test_sync_replaces_only_the_block(synced: Path) -> None:
 
 
 def test_check_needs_the_block(synced: Path) -> None:
+    """A .gitignore without jetstream's block is a difference."""
     (synced / ".gitignore").write_text("/output/\n")
     assert sync.check(synced) == [".gitignore has no jetstream block"]
 
@@ -256,6 +293,7 @@ def test_check_needs_the_block(synced: Path) -> None:
     ],
 )
 def test_bad_gitignore_markers_are_an_error(synced: Path, text: str) -> None:
+    """Markers that aren't one start line followed by one end line are an error, not a guess."""
     (synced / ".gitignore").write_text(text)
     with pytest.raises(sync.SyncError, match="exactly one"):
         sync.sync(synced)
@@ -265,6 +303,7 @@ def test_bad_gitignore_markers_are_an_error(synced: Path, text: str) -> None:
 
 
 def test_check_command_names_each_difference(synced: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """``jetstream check`` prints each difference and says to run sync, with its own exit status."""
     monkeypatch.chdir(synced)
     (synced / "mado.toml").write_text("changed\n")
     assert cli.main(["check"]) == cli.EXIT_DIFFERENT
@@ -274,6 +313,7 @@ def test_check_command_names_each_difference(synced: Path, monkeypatch: pytest.M
 
 
 def test_sync_command_says_what_it_wrote(synced: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """``jetstream sync`` prints each file it wrote, and check then passes."""
     monkeypatch.chdir(synced / ".")
     (synced / "mado.toml").unlink()
     assert cli.main(["sync"]) == cli.EXIT_OK
@@ -282,10 +322,12 @@ def test_sync_command_says_what_it_wrote(synced: Path, monkeypatch: pytest.Monke
 
 
 def test_commands_report_setup_errors_in_one_line(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """Outside a git repo, a command fails with one ``*** jetstream:`` line, not a traceback."""
     monkeypatch.chdir(tmp_path)
     assert cli.main(["check"]) == cli.EXIT_ERROR
     assert capsys.readouterr().err == "*** jetstream: not in a git repo\n"
 
 
 def test_jetstream_passes_its_own_check() -> None:
+    """The jetstream repo itself is what its own sync writes."""
     assert sync.check(ROOT) == [], "run jetstream sync"
