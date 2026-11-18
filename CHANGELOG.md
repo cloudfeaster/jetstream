@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/cloudfeaster/jetstream/compare/v0.1.3...v0.2.0) (2026-11-18)
+
+
+### Features
+
+* document why jetstream can include GPL development tools ([#27](https://github.com/cloudfeaster/jetstream/issues/27)) ([11d3799](https://github.com/cloudfeaster/jetstream/commit/11d3799751fd17715448777325dc23a8fc06423c))
+
 ## [0.1.3](https://github.com/cloudfeaster/jetstream/compare/v0.1.2...v0.1.3) (2026-11-18)
 
 
