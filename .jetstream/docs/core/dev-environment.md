@@ -72,3 +72,5 @@ A finding is fixed by whoever owns the vulnerable package. `uv tree --invert --p
 - **The repo's own dependencies need it**: the repo upgrades or pins them, or, if no fixed version can be used yet, adds a temporary exception to `.trivyignore`.
 
 An exception expires 7 days out, so it's reviewed again: `CVE-2026-12345 exp:2026-12-01  # why, and when to look again`.
+
+In Claude Code, `/jetstream-patch-vuln <ID>` works through a finding this way.

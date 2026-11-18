@@ -80,6 +80,7 @@ def test_core_owns_its_files() -> None:
     assert set(want.files) == {
         ".claude/settings.json",
         ".claude/skills/jetstream-new-feature/SKILL.md",
+        ".claude/skills/jetstream-patch-vuln/SKILL.md",
         ".claude/skills/jetstream-ship/SKILL.md",
         ".github/dependabot.yml",
         ".github/workflows/jetstream-lint.yaml",
