@@ -83,6 +83,8 @@ def test_core_owns_its_files() -> None:
         ".claude/skills/jetstream-ship/SKILL.md",
         ".github/dependabot.yml",
         ".github/workflows/jetstream-lint.yaml",
+        ".github/workflows/jetstream-nightly-sca.yaml",
+        ".jetstream/trivyignore",
         ".jsonlintignore",
         ".pre-commit-config.yaml",
         ".shellcheckrc",
