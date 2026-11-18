@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/cloudfeaster/jetstream/compare/v0.2.0...v0.3.0) (2026-11-18)
+
+
+### Features
+
+* add sqlfluff to the core pack ([#38](https://github.com/cloudfeaster/jetstream/issues/38)) ([2336329](https://github.com/cloudfeaster/jetstream/commit/233632909618ab4e09100ca0b6fc26876f4ad84b))
+* add the jetstream-patch-vuln skill to the core pack ([#34](https://github.com/cloudfeaster/jetstream/issues/34)) ([a9a2728](https://github.com/cloudfeaster/jetstream/commit/a9a272852d5b82a7933e5caca4e323cbb43627d2))
+* scan dependencies nightly, with jetstream's own trivy exceptions ([#33](https://github.com/cloudfeaster/jetstream/issues/33)) ([1a5f833](https://github.com/cloudfeaster/jetstream/commit/1a5f8338b1f115d467fe7a1d66e6023de3ff9858))
+* ship new-feature and ship as Claude Code skills in the core pack ([#32](https://github.com/cloudfeaster/jetstream/issues/32)) ([abdb46d](https://github.com/cloudfeaster/jetstream/commit/abdb46dedf795e59ce0725bf996abbdcf698f3e8))
+
+
+### Documentation
+
+* say how to take a jetstream release that changes owned files ([#29](https://github.com/cloudfeaster/jetstream/issues/29)) ([8fd3675](https://github.com/cloudfeaster/jetstream/commit/8fd3675e87dc64f94f1f2969eb64d29a2e7291e7))
+* say jetstream ships Claude Code skills, not plugins ([#35](https://github.com/cloudfeaster/jetstream/issues/35)) ([d453025](https://github.com/cloudfeaster/jetstream/commit/d45302500a7ec5fd2ef9c19550d53d96898a3cdd))
+
 ## [0.2.0](https://github.com/cloudfeaster/jetstream/compare/v0.1.3...v0.2.0) (2026-11-18)
 
 
