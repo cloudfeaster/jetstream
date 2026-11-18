@@ -26,7 +26,7 @@ Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit s
 
 ## Keeping the binary tools current
 
-Dependabot keeps jetstream's Python dependencies and actions current, but it can't see the binary tools pinned in `binaries.toml`. The `binary pins` workflow checks them every night with `bin/update-binary.py --check`, and fails when a pin is behind a release that's at least 7 days old. To bump one:
+Dependabot keeps jetstream's Python dependencies and actions current, but it can't see the binary tools pinned in `binaries.toml`. The `binary pins` workflow checks them every night with `bin/update-binary.py --check --verbose`, which reports every pin (its version, the latest release and whether that is still in the cooldown) and fails when a pin is behind a release that's at least 7 days old. To bump one:
 
 ```bash
 bin/update-binary.py <tool>             # its latest release past the cooldown

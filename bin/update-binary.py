@@ -4,6 +4,7 @@
     bin/update-binary.py TOOL VERSION   pin TOOL to VERSION
     bin/update-binary.py TOOL           pin TOOL to its latest release
     bin/update-binary.py --check        fail if any pin is behind its latest release
+    bin/update-binary.py --check -v     ... and report every tool's pinned and latest versions
 
 A release is only used once it's at least 7 days old (the cooldown, as for
 uv's exclude-newer and Dependabot), unless VERSION names it explicitly.
@@ -151,17 +152,28 @@ def update(pins: tomlkit.TOMLDocument, tool: str, version: str | None, now: date
     return f"{tool}: {old_version} -> {version}"
 
 
-def check(pins: tomlkit.TOMLDocument, now: datetime.datetime) -> list[str]:
-    """Return a line for each tool whose latest release past the cooldown isn't the pinned one."""
+def check(pins: tomlkit.TOMLDocument, now: datetime.datetime, verbose: bool = False) -> list[str]:
+    """Return a line for each tool whose latest release past the cooldown isn't the pinned one.
+
+    With ``verbose``, also print each tool's pinned and latest versions, and what that means.
+    """
     stale: list[str] = []
     for tool, pin in pins.items():
         release: dict[str, Any] = github_api(f"repos/{pin['repo']}/releases/latest")
         latest: str = version_from_tag(pin["tag"], release["tag_name"])
-        if latest != pin["version"] and is_past_cooldown(release, now):
+        status: str
+        if latest == pin["version"]:
+            status = "up to date"
+        elif not is_past_cooldown(release, now):
+            status = f"in the cooldown until {released_at(release) + COOLDOWN:%Y-%m-%d}, so {pin['version']} stays"
+        else:
+            status = "needs updating"
             stale.append(
                 f"{tool} {pin['version']} is outdated: {latest} was released {released_at(release):%Y-%m-%d}; "
                 f"run bin/update-binary.py {tool}",
             )
+        if verbose:
+            print(f"{tool}: pinned {pin['version']}; latest {latest} ({released_at(release):%Y-%m-%d}): {status}")
     return stale
 
 
@@ -169,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     """Run the command line."""
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if any pin is behind its latest release")
+    parser.add_argument("-v", "--verbose", action="store_true", help="with --check, report every tool, not just outdated ones")
     parser.add_argument("tool", nargs="?", help="the tool to update")
     parser.add_argument("version", nargs="?", help="the version to pin (default: the latest release)")
     args: argparse.Namespace = parser.parse_args(argv)
@@ -179,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     pins: tomlkit.TOMLDocument = tomlkit.parse(PINS_PATH.read_text())
     try:
         if args.check:
-            stale: list[str] = check(pins, now)
+            stale: list[str] = check(pins, now, verbose=args.verbose)
             for line in stale:
                 print(line, file=sys.stderr)
             return 1 if stale else 0

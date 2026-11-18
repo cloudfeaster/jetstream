@@ -44,4 +44,4 @@ jobs:
       - name: Check every binary pin is current
         env:
           GITHUB_TOKEN: ${{ github.token }}  # the API allows 60 requests an hour without one
-        run: uv run --no-sync bin/update-binary.py --check
+        run: uv run --no-sync bin/update-binary.py --check --verbose

@@ -174,6 +174,28 @@ def test_check(api: dict[str, Any], latest: str, days_old: int, stale: bool) -> 
     assert bool(update_binary.check(tomlkit.parse(PINS), NOW)) == stale
 
 
+@pytest.mark.parametrize(
+    ("latest", "days_old", "report"),
+    [
+        ("1.0.0", 30, "tool: pinned 1.0.0; latest 1.0.0 (2026-10-18): up to date"),
+        ("1.1.0", 3, "tool: pinned 1.0.0; latest 1.1.0 (2026-11-14): in the cooldown until 2026-11-21, so 1.0.0 stays"),
+        ("1.1.0", 8, "tool: pinned 1.0.0; latest 1.1.0 (2026-11-09): needs updating"),
+    ],
+)
+def test_check_verbose_reports_each_tool(
+    api: dict[str, Any], capsys: pytest.CaptureFixture[str], latest: str, days_old: int, report: str,
+) -> None:
+    api["repos/owner/tool/releases/latest"] = release(latest, days_old)
+    update_binary.check(tomlkit.parse(PINS), NOW, verbose=True)
+    assert capsys.readouterr().out == report + "\n"
+
+
+def test_check_is_quiet_by_default(api: dict[str, Any], capsys: pytest.CaptureFixture[str]) -> None:
+    api["repos/owner/tool/releases/latest"] = release("1.0.0", 30)
+    update_binary.check(tomlkit.parse(PINS), NOW)
+    assert capsys.readouterr().out == ""
+
+
 def test_version_from_tag() -> None:
     assert update_binary.version_from_tag("v{version}", "v1.2.3") == "1.2.3"
     assert update_binary.version_from_tag("{version}", "1.2.3") == "1.2.3"
