@@ -24,6 +24,17 @@ pytest
 
 Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit signed, open a draft pull request, and squash-merge once `jetstream lint` passes. Commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`); releases and `CHANGELOG.md` are generated from them (see [Releasing](#releasing)).
 
+## Keeping the binary tools current
+
+Dependabot keeps jetstream's Python dependencies and actions current, but it can't see the binary tools pinned in `binaries.toml`. The `binary pins` workflow checks them every night with `bin/update-binary.py --check --verbose`, which reports every pin (its version, the latest release and whether that is still in the cooldown) and fails when a pin is behind a release that's at least 7 days old. To bump one:
+
+```bash
+bin/update-binary.py <tool>             # its latest release past the cooldown
+bin/update-binary.py <tool> <version>   # a named version, even inside the cooldown
+```
+
+It updates the version and every platform's SHA-256 in `binaries.toml`, after checking GitHub's digests against the checksums file the project publishes. Commit it as a `fix:`, so the bump is released.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please), from the Conventional Commits on `main`:
