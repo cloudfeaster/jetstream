@@ -54,7 +54,7 @@ def github_api(path: str, *, authenticate: bool = True) -> Any:  # noqa: ANN401 
         # not on its list, such as a GitHub runner's, even for a public repo; it doesn't
         # refuse a request without one (https://github.com/aquasecurity/trivy/issues/10567).
         if token and e.code == 403 and "IP allow list" in error:  # noqa: PLR2004
-            print(f"*** {error}; retrying without GITHUB_TOKEN", file=sys.stderr)  # noqa: T201
+            sys.stderr.write(f"*** {error}; retrying without GITHUB_TOKEN\n")
             return github_api(path, authenticate=False)
         raise UpdateError(error) from e
     except urllib.error.URLError as e:
@@ -204,7 +204,7 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
             # Check the other tools anyway, so one failure doesn't hide what they'd report.
             stale.append(f"{tool}: couldn't check: {e}")
             if verbose:
-                print(stale[-1])  # noqa: T201
+                sys.stdout.write(stale[-1] + "\n")
             continue
         latest: str = version_from_tag(pin["tag"], release["tag_name"])
         status: str
@@ -218,7 +218,7 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
                 f"{tool} {pin['version']} is outdated: {latest} was released {released_at(release):%Y-%m-%d}; run bin/update-binary.py {tool}",
             )
         if verbose:
-            print(f"{tool}: pinned {pin['version']}; latest {latest} ({released_at(release):%Y-%m-%d}): {status}")  # noqa: T201
+            sys.stdout.write(f"{tool}: pinned {pin['version']}; latest {latest} ({released_at(release):%Y-%m-%d}): {status}\n")
     return stale
 
 
@@ -239,11 +239,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.check:
             stale: list[str] = check(pins, now, verbose=args.verbose)
             for line in stale:
-                print(line, file=sys.stderr)  # noqa: T201
+                sys.stderr.write(line + "\n")
             return 1 if stale else 0
-        print(update(pins, args.tool, args.version, now))  # noqa: T201
+        sys.stdout.write(update(pins, args.tool, args.version, now) + "\n")
     except UpdateError as e:
-        print(f"*** {e}", file=sys.stderr)  # noqa: T201
+        sys.stderr.write(f"*** {e}\n")
         return 1
     updated: str = tomlkit.dumps(pins)
     # Only write a change: binaries.toml is a uv cache key, so writing it rebuilds jetstream.

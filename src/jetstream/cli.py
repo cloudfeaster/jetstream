@@ -38,7 +38,7 @@ def run_sync(root: Path) -> int:
     """Write jetstream's files and keys into the repo, saying what changed."""
     changed: list[str] = sync.sync(root)
     for path in changed:
-        print(f"jetstream sync: wrote {path}")  # noqa: T201
+        sys.stdout.write(f"jetstream sync: wrote {path}\n")
     return EXIT_OK
 
 
