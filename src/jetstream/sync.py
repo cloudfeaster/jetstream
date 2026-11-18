@@ -19,7 +19,6 @@ owns three locations outright: ``sync()`` deletes any file there it didn't write
 
 from __future__ import annotations
 
-import subprocess
 import tomllib
 from dataclasses import dataclass
 from importlib.resources import files
@@ -89,18 +88,33 @@ class Expected:
 
 
 def repo_root(start: Path | None = None) -> Path:
-    """Return the root of the git repo containing ``start`` (default: the current directory)."""
-    result: subprocess.CompletedProcess[str] = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
-        cwd=start,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        msg: str = "not in a git repo"
-        raise SyncError(msg)
-    return Path(result.stdout.strip())
+    """Return the root of the git repo containing ``start`` (default: the current directory).
+
+    This looks for ``.git`` itself rather than running ``git rev-parse
+    --show-toplevel``, and that's deliberate. Running git can't satisfy both of
+    ruff's subprocess rules, which the python pack applies to jetstream's own
+    code: S607 rejects a bare ``"git"`` (a partial path, resolved through
+    PATH), and S603 rejects any argument that isn't a literal, so the full
+    path from ``shutil.which("git")`` fails too. A literal full path such as
+    ``/usr/bin/git`` passes both, but git isn't there on every machine
+    (Homebrew, Nix). Looking for ``.git`` needs no subprocess, so neither rule
+    applies, and git doesn't even need to be on PATH.
+
+    A git repo's root is the nearest folder, from ``start`` up, that holds a
+    ``.git``. In an ordinary clone that's a folder; in a worktree or a
+    submodule it's a file pointing at the real git dir. ``exists()``, not
+    ``is_dir()``, finds both, and the nearest one is the root ``git rev-parse``
+    would give for each. Where this differs from git: it ignores the GIT_DIR
+    and GIT_WORK_TREE environment variables, which nothing that runs jetstream
+    (cfg4dev.sh, pre-commit, CI) sets. If that changes, this has to change too;
+    the ``test_repo_root_*`` tests pin down the behavior.
+    """
+    here: Path = (start or Path.cwd()).resolve()
+    for folder in (here, *here.parents):
+        if (folder / ".git").exists():
+            return folder
+    msg: str = "not in a git repo"
+    raise SyncError(msg)
 
 
 def read_packs(root: Path) -> tuple[str, ...]:

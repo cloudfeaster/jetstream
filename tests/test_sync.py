@@ -1,5 +1,6 @@
 """Tests for ``jetstream sync`` and ``jetstream check``, each in a throwaway git repo."""
 
+import os
 import subprocess
 import tomllib
 from pathlib import Path
@@ -24,12 +25,18 @@ packs = ["core"]
 """
 
 
+def git(repo: Path, *args: str) -> None:
+    """Run git in ``repo``, without the GIT_* variables a git hook sets (such as GIT_INDEX_FILE), which would point it at this repo."""
+    env: dict[str, str] = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    subprocess.run(["git", *args], cwd=repo, env=env, check=True)  # noqa: S603, S607 (only the tests' own arguments; git from PATH, as people run it)
+
+
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
     """Return a git repo with a pyproject.toml selecting the core pack, never synced."""
     repo: Path = tmp_path / "repo"
     repo.mkdir()
-    subprocess.run(["git", "init", "--quiet", str(repo)], check=True)  # noqa: S603, S607
+    git(repo, "init", "--quiet")
     (repo / "pyproject.toml").write_text(PYPROJECT)
     return repo
 
@@ -44,6 +51,30 @@ def synced(repo: Path) -> Path:
 def pyproject_of(repo: Path) -> dict[str, Any]:
     """Return ``repo``'s parsed pyproject.toml."""
     return tomllib.loads((repo / "pyproject.toml").read_text())
+
+
+# --- the repo's root
+
+
+def test_repo_root_is_found_from_a_subfolder(repo: Path) -> None:
+    """The root is the nearest folder above ``start`` with a ``.git``."""
+    (repo / "src" / "pkg").mkdir(parents=True)
+    assert sync.repo_root(repo / "src" / "pkg") == repo
+
+
+def test_repo_root_of_a_worktree_is_the_worktree(repo: Path, tmp_path: Path) -> None:
+    """A worktree's ``.git`` is a file, not a folder, and its root is the worktree, not the main repo."""
+    git(repo, "-c", "user.name=A Developer", "-c", "user.email=dev@example.com", "commit", "--quiet", "--allow-empty", "--no-gpg-sign", "-m", "first")
+    worktree: Path = tmp_path / "worktree"
+    git(repo, "worktree", "add", "--quiet", str(worktree))
+    assert (worktree / ".git").is_file()
+    assert sync.repo_root(worktree) == worktree
+
+
+def test_repo_root_needs_a_git_repo(tmp_path: Path) -> None:
+    """Outside any git repo, there's no root."""
+    with pytest.raises(sync.SyncError, match="not in a git repo"):
+        sync.repo_root(tmp_path)
 
 
 # --- [tool.jetstream] packs

@@ -8,6 +8,7 @@ import io
 import types
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Final, NoReturn
 
@@ -19,6 +20,9 @@ assert _spec is not None
 assert _spec.loader is not None
 update_binary: types.ModuleType = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(update_binary)
+
+# The real fetch_text, before the autouse downloads fixture fakes it.
+FETCH_TEXT: Final[Callable[[str], str]] = update_binary.fetch_text
 
 NOW: Final[dt.datetime] = dt.datetime(2026, 11, 17, tzinfo=dt.UTC)
 
@@ -47,7 +51,7 @@ def release(version: str, days_old: int, *, digests: bool = True) -> dict[str, A
         "assets": [
             {"name": f"tool-{version}-linux-amd64.tar.gz", "digest": "sha256:new1" if digests else None},
             {"name": f"tool-{version}-macos-arm64.tar.gz", "digest": "sha256:new2" if digests else None},
-            {"name": "SHA256SUMS", "digest": "sha256:xxx", "browser_download_url": f"https://example.test/{version}/SHA256SUMS"},
+            {"name": "SHA256SUMS", "digest": "sha256:xxx"},
         ],
     }
 
@@ -59,14 +63,14 @@ def sha256sums(version: str, linux: str = "new1", macos: str = "new2") -> str:
 
 @pytest.fixture(autouse=True)
 def downloads(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
-    """Release assets by URL; the checksums for 1.1.0 by default."""
-    files: dict[str, str] = {"https://example.test/1.1.0/SHA256SUMS": sha256sums("1.1.0")}
+    """Return release assets by their URL after https://github.com/; the checksums for 1.1.0 by default."""
+    files: dict[str, str] = {"owner/tool/releases/download/v1.1.0/SHA256SUMS": sha256sums("1.1.0")}
 
-    def fake_fetch_text(url: str) -> str:
-        if url not in files:
-            msg: str = f"{url}: 404 Not Found"
+    def fake_fetch_text(path: str) -> str:
+        if path not in files:
+            msg: str = f"https://github.com/{path}: 404 Not Found"
             raise update_binary.UpdateError(msg)
-        return files[url]
+        return files[path]
 
     monkeypatch.setattr(update_binary, "fetch_text", fake_fetch_text)
     return files
@@ -130,7 +134,7 @@ def test_update_fails_without_a_digest(api: dict[str, Any]) -> None:
 def test_update_fails_when_the_projects_checksum_differs(api: dict[str, Any], downloads: dict[str, str]) -> None:
     """GitHub's digest must match the project's own checksums file."""
     api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8)
-    downloads["https://example.test/1.1.0/SHA256SUMS"] = sha256sums("1.1.0", macos="other")
+    downloads["owner/tool/releases/download/v1.1.0/SHA256SUMS"] = sha256sums("1.1.0", macos="other")
     with pytest.raises(update_binary.UpdateError, match="GitHub's digest new2 doesn't match other in SHA256SUMS"):
         update_binary.update(tomlkit.parse(PINS), "tool", None, NOW)
 
@@ -138,7 +142,7 @@ def test_update_fails_when_the_projects_checksum_differs(api: dict[str, Any], do
 def test_update_fails_when_the_checksums_file_has_no_entry(api: dict[str, Any], downloads: dict[str, str]) -> None:
     """A checksums file must list every pinned asset."""
     api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8)
-    downloads["https://example.test/1.1.0/SHA256SUMS"] = "new1  tool-1.1.0-linux-amd64.tar.gz\n"
+    downloads["owner/tool/releases/download/v1.1.0/SHA256SUMS"] = "new1  tool-1.1.0-linux-amd64.tar.gz\n"
     with pytest.raises(update_binary.UpdateError, match=r"SHA256SUMS in release v1.1.0 has no entry for tool-1.1.0-macos-arm64"):
         update_binary.update(tomlkit.parse(PINS), "tool", None, NOW)
 
@@ -157,12 +161,24 @@ def test_update_with_a_checksums_file_per_asset(api: dict[str, Any], downloads: 
     rel: dict[str, Any] = release("1.1.0", days_old=8)
     rel["assets"] = rel["assets"][:2]
     for asset, sha256 in [("tool-1.1.0-linux-amd64.tar.gz", "new1"), ("tool-1.1.0-macos-arm64.tar.gz", "new2")]:
-        url: str = f"https://example.test/{asset}.sha256"
-        rel["assets"].append({"name": f"{asset}.sha256", "browser_download_url": url})
-        downloads[url] = f"{sha256}  {asset}\n"
+        rel["assets"].append({"name": f"{asset}.sha256"})
+        downloads[f"owner/tool/releases/download/v1.1.0/{asset}.sha256"] = f"{sha256}  {asset}\n"
     api["repos/owner/tool/releases/latest"] = rel
     pins: tomlkit.TOMLDocument = tomlkit.parse(PINS.replace('"SHA256SUMS"', '"{asset}.sha256"'))
     assert update_binary.update(pins, "tool", None, NOW) == "tool: 1.0.0 -> 1.1.0"
+
+
+def test_fetch_text_gets_the_asset_from_github(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A release asset is fetched from https://github.com/, by its path there."""
+    requested: list[str] = []
+
+    def fake_urlopen(url: str, **_kwargs: object) -> io.BytesIO:
+        requested.append(url)
+        return io.BytesIO(b"abc  tool.tar.gz\n")
+
+    monkeypatch.setattr(update_binary.urllib.request, "urlopen", fake_urlopen)
+    assert FETCH_TEXT("owner/tool/releases/download/v1.0.0/SHA256SUMS") == "abc  tool.tar.gz\n"
+    assert requested == ["https://github.com/owner/tool/releases/download/v1.0.0/SHA256SUMS"]
 
 
 def test_parse_checksums() -> None:

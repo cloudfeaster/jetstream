@@ -105,10 +105,12 @@ def is_past_cooldown(release: dict[str, Any], now: dt.datetime) -> bool:
     return now - released_at(release) >= COOLDOWN
 
 
-def fetch_text(url: str) -> str:
-    """GET ``url`` (a release asset) as text."""
+def fetch_text(path: str) -> str:
+    """GET a release asset, by its URL after https://github.com/, as text."""
+    url: str = f"https://github.com/{path}"  # for messages
     try:
-        with urllib.request.urlopen(url, timeout=API_TIMEOUT_SECONDS) as response:  # noqa: S310
+        # The URL is written out here, not taken from url, so ruff's S310 can see it's https.
+        with urllib.request.urlopen(f"https://github.com/{path}", timeout=API_TIMEOUT_SECONDS) as response:
             return response.read().decode()
     except urllib.error.HTTPError as e:
         msg: str = f"{url}: {e.code} {e.reason}"
@@ -150,7 +152,7 @@ def platform_digests(pin: dict[str, Any], version: str, release: dict[str, Any])
             if checksums not in assets:
                 msg: str = f"release {release['tag_name']} has no checksums file {checksums}"
                 raise UpdateError(msg)
-            published[checksums] = parse_checksums(fetch_text(assets[checksums]["browser_download_url"]))
+            published[checksums] = parse_checksums(fetch_text(f"{pin['repo']}/releases/download/{release['tag_name']}/{checksums}"))
         if asset not in published[checksums]:
             msg: str = f"{checksums} in release {release['tag_name']} has no entry for {asset}"
             raise UpdateError(msg)

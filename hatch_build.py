@@ -72,9 +72,14 @@ class Binary(NamedTuple):
 
     name: str
     version: str
-    url: str
+    path: str  # the release asset's URL after https://github.com/
     member: str | None  # the executable inside a .tar.gz asset; None when the asset is the executable
     sha256: str
+
+    @property
+    def url(self) -> str:
+        """Return the release asset's URL, for messages."""
+        return f"https://github.com/{self.path}"
 
 
 def load_binaries(pins_path: Path, tag: str) -> list[Binary]:
@@ -98,7 +103,7 @@ def load_binaries(pins_path: Path, tag: str) -> list[Binary]:
                 Binary(
                     name=name,
                     version=version,
-                    url=f"https://github.com/{pin['repo']}/releases/download/{tag_name}/{asset}",
+                    path=f"{pin['repo']}/releases/download/{tag_name}/{asset}",
                     member=pin["member"].format(**fields) if "member" in pin else None,
                     sha256=platform_pin["sha256"].lower(),
                 ),
@@ -139,8 +144,9 @@ def download(binary: Binary, cache_dir: Path) -> Path:
     partial: Path = Path(partial_name)
     try:
         digest: hashlib._Hash = hashlib.sha256()
-        # The URL is always https (file in tests), which is what S310 checks for.
-        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(binary.url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:  # noqa: S310
+        # The URL is written out here, not taken from binary.url, so ruff's S310
+        # can see it's https: a download can never open a file: or other URL.
+        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(f"https://github.com/{binary.path}", timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
             while chunk := response.read(CHUNK_SIZE):
                 digest.update(chunk)
                 out.write(chunk)

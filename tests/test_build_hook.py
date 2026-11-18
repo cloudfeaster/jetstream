@@ -8,6 +8,7 @@ import sys
 import tarfile
 import tomllib
 import types
+import urllib.error
 from pathlib import Path
 from typing import Any, Final
 
@@ -107,7 +108,7 @@ linux_x86_64 = { platform = "linux-amd64", sha256 = "ABC" }
     assert binary == hatch_build.Binary(
         name="tool",
         version="1.2.3",
-        url="https://github.com/owner/tool/releases/download/v1.2.3/tool-1.2.3-linux-amd64.tar.gz",
+        path="owner/tool/releases/download/v1.2.3/tool-1.2.3-linux-amd64.tar.gz",
         member="tool-v1.2.3/bin/tool",
         sha256="abc",
     )
@@ -155,10 +156,26 @@ def make_archive(path: Path, members: dict[str, bytes]) -> str:
 
 
 def binary_for(archive: Path, sha256: str, member: str = "dir/tool") -> "hatch_build.Binary":
-    """Return a Binary that downloads ``archive`` from a file URL."""
-    return hatch_build.Binary(name="tool", version="1.2.3", url=archive.as_uri(), member=member, sha256=sha256)
+    """Return a Binary whose release asset is named after ``archive``."""
+    return hatch_build.Binary(name="tool", version="1.2.3", path=f"owner/tool/releases/download/v1.2.3/{archive.name}", member=member, sha256=sha256)
 
 
+@pytest.fixture
+def github(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Serve each download from the file in ``tmp_path`` with its asset's name, or fail as GitHub would."""
+
+    def fake_urlopen(url: str, **_kwargs: object) -> io.BytesIO:
+        assert url.startswith("https://github.com/owner/tool/releases/download/v1.2.3/"), url
+        asset: Path = tmp_path / url.rsplit("/", 1)[-1]
+        if not asset.is_file():
+            reason: str = "404 Not Found"
+            raise urllib.error.URLError(reason)
+        return io.BytesIO(asset.read_bytes())
+
+    monkeypatch.setattr(hatch_build.urllib.request, "urlopen", fake_urlopen)
+
+
+@pytest.mark.usefixtures("github")
 def test_download_verifies_and_caches(tmp_path: Path) -> None:
     """A verified download is cached by its SHA-256, and a later build uses the cache."""
     archive: Path = tmp_path / "tool.tar.gz"
@@ -174,6 +191,7 @@ def test_download_verifies_and_caches(tmp_path: Path) -> None:
     assert hatch_build.download(binary_for(archive, sha256), cache_dir) == cached
 
 
+@pytest.mark.usefixtures("github")
 def test_download_replaces_a_corrupt_cached_file(tmp_path: Path) -> None:
     """A cached file that fails verification is downloaded again."""
     archive: Path = tmp_path / "tool.tar.gz"
@@ -186,6 +204,7 @@ def test_download_replaces_a_corrupt_cached_file(tmp_path: Path) -> None:
     assert cached.read_bytes() == archive.read_bytes()
 
 
+@pytest.mark.usefixtures("github")
 def test_download_fails_on_sha256_mismatch_and_keeps_nothing(tmp_path: Path) -> None:
     """A download with the wrong SHA-256 stops the build and leaves nothing in the cache."""
     archive: Path = tmp_path / "tool.tar.gz"
@@ -194,16 +213,17 @@ def test_download_fails_on_sha256_mismatch_and_keeps_nothing(tmp_path: Path) -> 
 
     with pytest.raises(SystemExit) as exc_info:
         hatch_build.download(binary_for(archive, "0" * 64), cache_dir)
-    assert_one_line_failure(exc_info, "SHA-256 mismatch for tool 1.2.3 from file://")
+    assert_one_line_failure(exc_info, "SHA-256 mismatch for tool 1.2.3 from https://github.com/owner/tool/releases/download/v1.2.3/tool.tar.gz:")
     assert list(cache_dir.iterdir()) == []
 
 
+@pytest.mark.usefixtures("github")
 def test_download_fails_cleanly_when_the_download_fails(tmp_path: Path) -> None:
     """A download that can't be fetched stops the build and leaves nothing in the cache."""
     cache_dir: Path = tmp_path / "cache"
     with pytest.raises(SystemExit) as exc_info:
         hatch_build.download(binary_for(tmp_path / "missing.tar.gz", "0" * 64), cache_dir)
-    assert_one_line_failure(exc_info, "can't download tool 1.2.3 from file://")
+    assert_one_line_failure(exc_info, "can't download tool 1.2.3 from https://github.com/owner/tool/releases/download/v1.2.3/missing.tar.gz: 404 Not Found")
     assert list(cache_dir.iterdir()) == []
 
 
@@ -260,7 +280,7 @@ def test_extract_fails_on_missing_member(tmp_path: Path) -> None:
     sha256: str = make_archive(archive, {"other": b"x"})
     with pytest.raises(SystemExit) as exc_info:
         hatch_build.extract(binary_for(archive, sha256), archive, tmp_path)
-    assert_one_line_failure(exc_info, f"{archive.as_uri()} has no dir/tool")
+    assert_one_line_failure(exc_info, "https://github.com/owner/tool/releases/download/v1.2.3/tool.tar.gz has no dir/tool")
 
 
 def test_extract_fails_on_a_corrupt_archive(tmp_path: Path) -> None:
@@ -269,7 +289,7 @@ def test_extract_fails_on_a_corrupt_archive(tmp_path: Path) -> None:
     archive.write_bytes(b"not a tarball")
     with pytest.raises(SystemExit) as exc_info:
         hatch_build.extract(binary_for(archive, "0" * 64), archive, tmp_path)
-    assert_one_line_failure(exc_info, "can't extract dir/tool from file://")
+    assert_one_line_failure(exc_info, "can't extract dir/tool from https://github.com/owner/tool/releases/download/v1.2.3/tool.tar.gz:")
 
 
 # --- run-*.sh scripts

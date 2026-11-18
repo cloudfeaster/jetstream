@@ -43,8 +43,8 @@ SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
 
 def git(repo: Path, *args: str) -> str:
     """Run git in ``repo`` and return its output."""
-    result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (the tests' own arguments)
-        ["git", *args],  # noqa: S607
+    result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the tests' own arguments)
+        ["git", *args],  # noqa: S607 (git from PATH, as people run it)
         cwd=repo,
         check=True,
         capture_output=True,
@@ -77,7 +77,7 @@ def run_script(system_path: str, repo: Path, script: str, *args: str) -> subproc
         "HOME": str(repo.parent),
         "GIT_CONFIG_NOSYSTEM": "1",
     }
-    return subprocess.run(  # noqa: S603 (the tests' own arguments)
+    return subprocess.run(  # noqa: S603 (only the tests' own arguments)
         [str(VENV_BIN / script), *args],
         cwd=repo,
         env=env,
