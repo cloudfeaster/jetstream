@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/cloudfeaster/jetstream/compare/v0.1.2...v0.1.3) (2026-11-18)
+
+
+### Documentation
+
+* say how the org rulesets protect release tags ([#25](https://github.com/cloudfeaster/jetstream/issues/25)) ([ae6d3d2](https://github.com/cloudfeaster/jetstream/commit/ae6d3d2fd921f99e7961dcf3b76bf736078b08c1))
+
 ## [0.1.2](https://github.com/cloudfeaster/jetstream/compare/v0.1.1...v0.1.2) (2026-11-17)
 
 
