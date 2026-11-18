@@ -31,7 +31,9 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 1. Every push to `main` runs the `release-please` workflow. It opens, or updates, a release PR from the `release-please--branches--main--components--cloudfeaster-jetstream` branch. The PR sets the next version in `pyproject.toml` and `uv.lock`, and adds the commits since the last release to `CHANGELOG.md`.
 1. Merge the release PR like any other, once `jetstream lint` passes. The workflow then tags the merge commit `vX.Y.Z` and creates the GitHub Release.
 
-The commits decide the version. Before 1.0.0, a breaking change (`feat!:`) or a `feat:` bumps the minor version, and a `fix:` bumps the patch version. From 1.0.0 on, a breaking change bumps the major version. A change is breaking if a repo must change something it owns to take the release. Tags are never moved or deleted (decision 9 in #1).
+The commits decide the version. Before 1.0.0, a breaking change (`feat!:`) or a `feat:` bumps the minor version, and a `fix:` bumps the patch version. From 1.0.0 on, a breaking change bumps the major version. A change is breaking if a repo must change something it owns to take the release.
+
+Two org rulesets protect the tags: only the `cloudfeaster-release` App can create a tag, and no one, the App and org owners included, can move or delete one. So a release's only source is release-please, and a tag can't be created by hand, even by an owner. If a release fails between merging the release PR and tagging, rerun the `release-please` workflow. The rulesets are set and checked nightly by `cloudfeaster/.github-private` (`docs/org-hardening.md`, section 8). They replace a `vX.Y.Z` tag name pattern, which GitHub Team doesn't enforce (decision 9 in #1).
 
 ### Setting up the release App
 
