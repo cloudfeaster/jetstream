@@ -18,6 +18,7 @@ import pytest
 ROOT: Final[Path] = Path(__file__).parent.parent
 VENV_BIN: Final[Path] = Path(sys.prefix) / "bin"
 CORE_FILES: Final[Path] = ROOT / "src" / "jetstream" / "files" / "core"
+CORE_PARTS: Final[Path] = ROOT / "src" / "jetstream" / "parts" / "core"
 # run(repo, "run-<tool>.sh", *args) runs a script in repo.
 type Run = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -168,6 +169,40 @@ def test_shellcheck_fails_unquoted_variable(repo: Path, run: Run) -> None:
 
 def test_shellcheck_passes_with_no_shell_scripts(repo: Path, run: Run) -> None:
     assert run(repo, "run-shellcheck.sh").returncode == 0
+
+
+# --- sqlfluff
+
+# jetstream's sqlfluff keys, plus the dialect, which each repo sets.
+SQLFLUFF_PYPROJECT: Final[str] = (
+    (CORE_PARTS / "pyproject.toml").read_text().replace("[tool.sqlfluff.core]\n", '[tool.sqlfluff.core]\ndialect = "sqlite"\n')
+)
+
+
+def test_sqlfluff_passes_good_sql_and_templates(repo: Path, run: Run) -> None:
+    add(
+        repo,
+        {
+            "pyproject.toml": SQLFLUFF_PYPROJECT,
+            "a.sql": "SELECT a FROM t\n",
+            "b.sql.j2": "SELECT a FROM t\n{% if true %}WHERE a = 1{% endif %}\n",
+        },
+    )
+    result: subprocess.CompletedProcess[str] = run(repo, "run-sqlfluff.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_sqlfluff_fails_with_jetstreams_rules(repo: Path, run: Run) -> None:
+    add(repo, {"pyproject.toml": SQLFLUFF_PYPROJECT, "a.sql": "select a from t\n", "b.sql": "SELECT a FROM t\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-sqlfluff.sh")
+    assert result.returncode != 0
+    assert "== [a.sql] FAIL" in result.stdout
+    assert "CP01" in result.stdout  # jetstream's upper-case keywords
+    assert "b.sql" not in result.stdout
+
+
+def test_sqlfluff_passes_with_no_sql(repo: Path, run: Run) -> None:
+    assert run(repo, "run-sqlfluff.sh").returncode == 0
 
 
 # --- zizmor
