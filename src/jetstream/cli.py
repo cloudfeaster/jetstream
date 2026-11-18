@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import sys
 from importlib.metadata import version
-from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from jetstream import sync
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 EXIT_OK: Final[int] = 0
 EXIT_DIFFERENT: Final[int] = 1  # check found differences
@@ -36,7 +38,7 @@ def run_sync(root: Path) -> int:
     """Write jetstream's files and keys into the repo, saying what changed."""
     changed: list[str] = sync.sync(root)
     for path in changed:
-        print(f"jetstream sync: wrote {path}")
+        sys.stdout.write(f"jetstream sync: wrote {path}\n")
     return EXIT_OK
 
 

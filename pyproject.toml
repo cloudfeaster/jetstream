@@ -28,7 +28,10 @@ core = [
     "yamllint==1.38.0",
     "zizmor==1.32.0",
 ]
-python = []
+python = [
+    "ruff==0.17.4",
+    "ty==0.0.101",
+]
 website = []
 
 [project.scripts]
@@ -40,7 +43,7 @@ Issues = "https://github.com/cloudfeaster/jetstream/issues"
 
 [dependency-groups]
 dev = [
-    "cloudfeaster-jetstream[core]",  # jetstream checks itself with its own core pack
+    "cloudfeaster-jetstream[core,python]",  # jetstream checks itself with its own packs
     "hatchling==1.33.0",  # for tests of hatch_build.py; keep in step with [build-system]
 ]
 
@@ -67,7 +70,7 @@ cache-keys = [
 ]
 
 [tool.jetstream]
-packs = ["core"]
+packs = ["core", "python"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -92,3 +95,33 @@ capitalisation_policy = "upper"
 
 [tool.sqlfluff.rules.capitalisation.types]
 extended_capitalisation_policy = "upper"
+
+[tool.ruff]
+line-length = 256
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "S101",
+    "B011",
+    "PT015",
+    "SLF001",
+    "D203",
+    "D213",
+    "COM812",
+    "TID252",
+    "CPY001",
+]
+
+[tool.ruff.lint.pylint]
+max-statements = 100
+max-args = 12
+max-returns = 20
+max-branches = 30
+
+[tool.ruff.lint.mccabe]
+max-complexity = 30
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 72

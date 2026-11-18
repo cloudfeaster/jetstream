@@ -19,16 +19,17 @@ owns three locations outright: ``sync()`` deletes any file there it didn't write
 
 from __future__ import annotations
 
-import subprocess
 import tomllib
 from dataclasses import dataclass
 from importlib.resources import files
-from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import tomlkit
 import tomlkit.items
+
+if TYPE_CHECKING:
+    from importlib.resources.abc import Traversable
 
 # Every pack, in the order their parts are combined. core is required.
 PACKS: Final[tuple[str, ...]] = ("core", "python", "website")
@@ -54,6 +55,10 @@ GENERATED_FILES: Final[dict[str, str]] = {
     "dependabot.yml": ".github/dependabot.yml",
     "nightly-sca.yaml": ".github/workflows/jetstream-nightly-sca.yaml",
 }
+
+# A later pack's part is a whole YAML file, so yamllint can check it; only the
+# lines after this marker line are appended to the earlier packs' parts.
+PART_MARKER: Final[str] = "# >>> jetstream: appended"
 
 PACKAGE: Final[Traversable] = files("jetstream")
 
@@ -83,17 +88,33 @@ class Expected:
 
 
 def repo_root(start: Path | None = None) -> Path:
-    """Return the root of the git repo containing ``start`` (default: the current directory)."""
-    result: subprocess.CompletedProcess[str] = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
-        cwd=start,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise SyncError("not in a git repo")
-    return Path(result.stdout.strip())
+    """Return the root of the git repo containing ``start`` (default: the current directory).
+
+    This looks for ``.git`` itself rather than running ``git rev-parse
+    --show-toplevel``, and that's deliberate. Running git can't satisfy both of
+    ruff's subprocess rules, which the python pack applies to jetstream's own
+    code: S607 rejects a bare ``"git"`` (a partial path, resolved through
+    PATH), and S603 rejects any argument that isn't a literal, so the full
+    path from ``shutil.which("git")`` fails too. A literal full path such as
+    ``/usr/bin/git`` passes both, but git isn't there on every machine
+    (Homebrew, Nix). Looking for ``.git`` needs no subprocess, so neither rule
+    applies, and git doesn't even need to be on PATH.
+
+    A git repo's root is the nearest folder, from ``start`` up, that holds a
+    ``.git``. In an ordinary clone that's a folder; in a worktree or a
+    submodule it's a file pointing at the real git dir. ``exists()``, not
+    ``is_dir()``, finds both, and the nearest one is the root ``git rev-parse``
+    would give for each. Where this differs from git: it ignores the GIT_DIR
+    and GIT_WORK_TREE environment variables, which nothing that runs jetstream
+    (cfg4dev.sh, pre-commit, CI) sets. If that changes, this has to change too;
+    the ``test_repo_root_*`` tests pin down the behavior.
+    """
+    here: Path = (start or Path.cwd()).resolve()
+    for folder in (here, *here.parents):
+        if (folder / ".git").exists():
+            return folder
+    msg: str = "not in a git repo"
+    raise SyncError(msg)
 
 
 def read_packs(root: Path) -> tuple[str, ...]:
@@ -102,18 +123,23 @@ def read_packs(root: Path) -> tuple[str, ...]:
     try:
         config: dict[str, Any] = tomllib.loads(pyproject.read_text())
     except FileNotFoundError as e:
-        raise SyncError(f"no pyproject.toml in {root}") from e
+        msg: str = f"no pyproject.toml in {root}"
+        raise SyncError(msg) from e
     except tomllib.TOMLDecodeError as e:
-        raise SyncError(f"can't parse pyproject.toml: {e}") from e
+        msg: str = f"can't parse pyproject.toml: {e}"
+        raise SyncError(msg) from e
 
     packs: object = config.get("tool", {}).get("jetstream", {}).get("packs")
     if not isinstance(packs, list) or not all(isinstance(pack, str) for pack in packs):
-        raise SyncError('pyproject.toml needs [tool.jetstream] packs, a list such as ["core"]')
+        msg: str = 'pyproject.toml needs [tool.jetstream] packs, a list such as ["core"]'
+        raise SyncError(msg)
     unknown: list[str] = [pack for pack in packs if pack not in PACKS]
     if unknown:
-        raise SyncError(f"unknown pack(s) in [tool.jetstream] packs: {', '.join(unknown)}; packs are {', '.join(PACKS)}")
+        msg: str = f"unknown pack(s) in [tool.jetstream] packs: {', '.join(unknown)}; packs are {', '.join(PACKS)}"
+        raise SyncError(msg)
     if "core" not in packs:
-        raise SyncError('[tool.jetstream] packs must include "core"')
+        msg: str = '[tool.jetstream] packs must include "core"'
+        raise SyncError(msg)
     return tuple(pack for pack in PACKS if pack in packs)
 
 
@@ -150,6 +176,15 @@ def flatten(table: dict[str, Any], prefix: KeyPath = ()) -> dict[KeyPath, Any]:
     return leaves
 
 
+def appended(part: str) -> str:
+    """Return what ``part`` adds to a generated file: the lines after its PART_MARKER line, or all of it."""
+    lines: list[str] = part.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.strip() == PART_MARKER:
+            return "".join(lines[i + 1 :])
+    return part
+
+
 def expected(packs: tuple[str, ...]) -> Expected:
     """Return everything jetstream owns in a repo with ``packs``."""
     owned: dict[str, Owned] = {}
@@ -160,7 +195,8 @@ def expected(packs: tuple[str, ...]) -> Expected:
     for pack in packs:
         for path, entry in walk(PACKAGE / "files" / pack).items():
             if path in owned:
-                raise SyncError(f"packs both write {path}")  # a bug in jetstream, caught by its tests
+                msg: str = f"packs both write {path}"
+                raise SyncError(msg)  # a bug in jetstream, caught by its tests
             owned[path] = Owned(entry.read_bytes(), is_executable(entry))
 
         for path, entry in walk(PACKAGE / "docs" / pack).items():
@@ -169,7 +205,7 @@ def expected(packs: tuple[str, ...]) -> Expected:
         parts: Traversable = PACKAGE / "parts" / pack
         for part in GENERATED_FILES:
             if (parts / part).is_file():
-                generated[part].append((parts / part).read_text())
+                generated[part].append(appended((parts / part).read_text()))
         if (parts / "gitignore").is_file():
             gitignore.append((parts / "gitignore").read_text())
         if (parts / "pyproject.toml").is_file():
@@ -194,7 +230,8 @@ def split_gitignore(text: str) -> tuple[str, str | None, str]:
     if not starts and not ends:
         return text, None, ""
     if len(starts) != 1 or len(ends) != 1 or ends[0] < starts[0]:
-        raise SyncError(f".gitignore needs exactly one '# >>> jetstream' line followed by one '{GITIGNORE_END}' line")
+        msg: str = f".gitignore needs exactly one '# >>> jetstream' line followed by one '{GITIGNORE_END}' line"
+        raise SyncError(msg)
     block: str = "".join(lines[starts[0] : ends[0] + 1])
     if not block.endswith("\n"):
         block += "\n"
@@ -215,7 +252,7 @@ def synced_gitignore(text: str, block: str) -> str:
 # --- pyproject.toml
 
 
-def unwrap(value: Any) -> Any:  # noqa: ANN401 (TOML values)
+def unwrap(value: object) -> object:
     """Return a tomlkit value as plain Python, for comparison."""
     return value.unwrap() if isinstance(value, tomlkit.items.Item) else value
 
@@ -230,7 +267,7 @@ def get_key(document: tomlkit.TOMLDocument, path: KeyPath) -> tuple[bool, Any]:
     return True, unwrap(node)
 
 
-def set_key(document: tomlkit.TOMLDocument, path: KeyPath, value: Any) -> None:  # noqa: ANN401
+def set_key(document: tomlkit.TOMLDocument, path: KeyPath, value: object) -> None:
     """Set ``path`` in ``document`` to ``value``, adding tables as needed and keeping the rest as it is."""
     node: Any = document
     for depth, key in enumerate(path[:-1]):
@@ -239,8 +276,8 @@ def set_key(document: tomlkit.TOMLDocument, path: KeyPath, value: Any) -> None: 
             node[key] = tomlkit.table(is_super_table=depth < len(path) - 2)
         node = node[key]
     item: Any = tomlkit.item(value)
-    if isinstance(item, tomlkit.items.Array) and len(value) > 1:
-        item.multiline(True)
+    if isinstance(item, tomlkit.items.Array) and len(item) > 1:
+        item.multiline(multiline=True)
     node[path[-1]] = item
 
 
@@ -307,8 +344,7 @@ def differences(root: Path, want: Expected) -> list[str]:
             found.append(f"pyproject.toml: {format_key(key_path)} is missing; jetstream sets {tomlkit.item(value).as_string()}")
         elif actual != value:
             found.append(
-                f"pyproject.toml: {format_key(key_path)} is {tomlkit.item(actual).as_string()}; "
-                f"jetstream sets {tomlkit.item(value).as_string()}",
+                f"pyproject.toml: {format_key(key_path)} is {tomlkit.item(actual).as_string()}; jetstream sets {tomlkit.item(value).as_string()}",
             )
     return found
 
