@@ -64,3 +64,36 @@ To sign with an existing SSH key instead (`gpg.format = ssh`), see [GitHub's doc
     ```
 
     `-D` is needed because a squash merge makes a new commit on `main`, so git doesn't see the branch as merged.
+
+## Taking a jetstream release
+
+Dependabot opens a pull request when jetstream releases, changing the tag in `pyproject.toml` and the lock in `uv.lock`. That's all Dependabot can change, so when a release also changes files jetstream owns, `jetstream check` fails on the pull request, naming each file:
+
+```text
+*** jetstream: .github/workflows/jetstream-lint.yaml differs from what jetstream writes
+*** jetstream: run `jetstream sync` and commit what it changes
+```
+
+That's deliberate: a repo takes a whole release or none of it, so the new tools can't merge with the old configuration. A release that changes no owned files passes as it is, so just merge it. Otherwise, add `jetstream sync`'s changes to the pull request:
+
+1. **Check out the pull request** and set up the environment, which runs `uv sync` (installing the new release) and then `jetstream sync`:
+
+    ```bash
+    deactivate 2>/dev/null   # if another repo's .venv is active, so it can't shadow this one's jetstream
+    gh pr checkout <number>
+    source cfg4dev.sh
+    ```
+
+    `jetstream sync: wrote ...` lists the files it changed, and `jetstream --version` shows the new release.
+
+1. **Commit and push** the changes, including any new files the release adds:
+
+    ```bash
+    git add -A
+    git commit -m "chore: jetstream sync for vX.Y.Z"
+    git push
+    ```
+
+1. **Review the sync commit**: its diff is what the release actually changes in this repo. Merge once `jetstream lint` passes, then clean up as above.
+
+Once you've pushed to its branch, Dependabot stops updating the pull request. If `main` moves on before you merge, update the branch (`gh pr update-branch`), and run `jetstream check` again.
