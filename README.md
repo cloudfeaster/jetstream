@@ -34,6 +34,16 @@ A repo selects packs in `[tool.jetstream] packs`:
 
 Linux x86_64, Linux arm64 and macOS arm64. On any other platform, building jetstream stops with `*** jetstream: unsupported platform ...`.
 
+## How jetstream is distributed
+
+jetstream is published only as source, at its `vX.Y.Z` tags. That matters for licensing, so it's a rule, not just how things happen to work today:
+
+1. **A jetstream wheel is only ever built on the machine that installs it.** `uv sync` fetches jetstream's source at the pinned tag and builds the wheel there. jetstream's build hook downloads each CLI binary pinned in `binaries.toml` from its publisher's own GitHub releases, checks its SHA-256, and puts it in that wheel.
+1. **jetstream wheels are never published.** They aren't on PyPI or any other package index, they're never attached to a GitHub Release, and no container image has jetstream installed. CI doesn't keep them either: the generated `jetstream-lint.yaml` turns off uv's GitHub Actions cache, and jetstream's `release-assets` workflow fails if a release ever has a file attached.
+1. **A wheel only installs the tools on that machine.** The binaries in it come from their publishers, and the wheel is used only to put them in the repo's `.venv/bin`. jetstream's Python tools, such as `shellcheck-py`, come from PyPI.
+
+So jetstream installs its tools without distributing them, and under [the licensing policy](src/jetstream/docs/core/licensing.md) it can include development tools whatever their license, GPL-3.0 ShellCheck included. Each tool runs as a separate program on a repo's code and isn't linked into it, so it doesn't change that code's license. Changing any of this, for example publishing a built wheel, needs a licensing review first.
+
 ## Generic content only
 
 jetstream is public and is installed by private, public and spun-out repos alike. It must never contain secrets, client names, internal hostnames or anything else specific to one project. The same secret-scanning and sensitive-value checks jetstream ships run on jetstream itself.
