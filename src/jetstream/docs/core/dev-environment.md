@@ -46,6 +46,7 @@ The pre-commit hooks, which CI also runs (`pre-commit run --all-files`), all cal
 | `no-commit-to-branch` | you aren't committing on `main` |
 | `lockfile` | `uv.lock` matches `pyproject.toml` |
 | `yamllint`, `json-lint`, `mado`, `shellcheck` | YAML, JSON ([json.md](json.md)), Markdown ([markdown.md](markdown.md)) and shell scripts |
+| `sqlfluff` | SQL (`*.sql`, and `*.sql.j2` Jinja templates), with jetstream's `[tool.sqlfluff]` keys; the repo sets `[tool.sqlfluff.core] dialect`, and the values its templates need in `[tool.sqlfluff.templater.jinja.context]` |
 | `zizmor` | GitHub Actions workflows ([github-actions.md](github-actions.md)) |
 | `check-svg` | diagrams match their D2 sources ([diagrams.md](diagrams.md)) |
 | `gitleaks` | no secrets in the git history; a false positive goes in `.gitleaksignore` |

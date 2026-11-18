@@ -12,3 +12,24 @@ exclude-newer = "7 days"
 markers = [
     "integration: slow tests that run-unit-tests.sh leaves out",
 ]
+
+# sqlfluff (run-sqlfluff.sh). The repo sets [tool.sqlfluff.core] dialect,
+# and any [tool.sqlfluff.templater.jinja.context] its *.sql.j2 files need.
+[tool.sqlfluff.core]
+templater = "jinja"
+sql_file_exts = ".sql,.sql.j2"
+max_line_length = 256
+# ST06 reorders select columns, which breaks callers that unpack rows positionally
+exclude_rules = "ST06"
+
+[tool.sqlfluff.rules.capitalisation.keywords]
+capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.functions]
+extended_capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.literals]
+capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.types]
+extended_capitalisation_policy = "upper"
