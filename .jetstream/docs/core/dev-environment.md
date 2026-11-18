@@ -31,7 +31,7 @@ To change one of those files, change it in jetstream, then bump the repo's jetst
 
 | Kind | Examples | Who changes it |
 |---|---|---|
-| **Owned by jetstream** | `cfg4dev.sh`, `.pre-commit-config.yaml`, the tool configs (`mado.toml`, `.yamllint`, `.shellcheckrc`, `.trivy.yaml`, `.jsonlintignore`), `.vscode/`'s `settings.json`, `terminal-init.sh` and `.gitignore`, `.claude/settings.json`, `.claude/skills/jetstream-*/`, `.github/dependabot.yml`, `.github/workflows/jetstream-*.yaml` and `.jetstream/docs/` | jetstream; `sync` writes them, `check` enforces them |
+| **Owned by jetstream** | `cfg4dev.sh`, `.pre-commit-config.yaml`, the tool configs (`mado.toml`, `.yamllint`, `.shellcheckrc`, `.trivy.yaml`, `.jsonlintignore`), `.vscode/`'s `settings.json`, `terminal-init.sh` and `.gitignore`, `.claude/settings.json`, `.claude/skills/jetstream-*/`, `.github/dependabot.yml`, `.github/workflows/jetstream-*.yaml`, `.jetstream/docs/` and `.jetstream/trivyignore` | jetstream; `sync` writes them, `check` enforces them |
 | **Owned by the repo** | `cfg4dev.local.sh`, `.trivyignore`, `.gitleaksignore`, `CONTRIBUTING.md`, `CLAUDE.md`, and the repo's own workflows | the repo |
 | **A jetstream block in a repo's file** | `.gitignore`, between `# >>> jetstream` and `# <<< jetstream` | jetstream inside the block, the repo outside it |
 | **Both set values** | `pyproject.toml` | jetstream sets certain keys, such as `requires-python` and `[tool.uv] exclude-newer`, and the repo owns every other key, including keys it adds to jetstream's tables |
@@ -51,7 +51,7 @@ The pre-commit hooks, which CI also runs (`pre-commit run --all-files`), all cal
 | `zizmor` | GitHub Actions workflows ([github-actions.md](github-actions.md)) |
 | `check-svg` | diagrams match their D2 sources ([diagrams.md](diagrams.md)) |
 | `gitleaks` | no secrets in the git history; a false positive goes in `.gitleaksignore` |
-| `trivy` | no known vulnerabilities in the lockfiles; a temporary exception goes in `.trivyignore` |
+| `trivy` | no known vulnerabilities in the lockfiles (see [Vulnerabilities](#vulnerabilities)) |
 | `unit-tests` | the repo's tests pass (pytest, leaving out those marked `integration`) |
 
 To run them all, as CI does:
@@ -61,3 +61,14 @@ pre-commit run --all-files
 ```
 
 A repo can't add hooks. It adds a check by adding a test, which the `unit-tests` hook runs.
+
+## Vulnerabilities
+
+The `trivy` hook scans the lockfiles at every commit, and the `jetstream-nightly-sca.yaml` workflow scans them every night, so a new advisory fails without anyone pushing. GitHub emails a failed run to whoever last changed the workflow's schedule, usually whoever committed the `jetstream sync` that wrote it.
+
+A finding is fixed by whoever owns the vulnerable package. `uv tree --invert --package <name>` shows why it's there.
+
+- **Only jetstream's tools need it** (every path leads to `cloudfeaster-jetstream`): jetstream fixes it, or adds a temporary exception to `.jetstream/trivyignore`, in a release. The repo doesn't ignore it, so its scans keep failing until it takes that release. Close any Dependabot pull request that bumps one of jetstream's dependencies.
+- **The repo's own dependencies need it**: the repo upgrades or pins them, or, if no fixed version can be used yet, adds a temporary exception to `.trivyignore`.
+
+An exception expires 7 days out, so it's reviewed again: `CVE-2026-12345 exp:2026-12-01  # why, and when to look again`.

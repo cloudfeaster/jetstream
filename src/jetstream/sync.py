@@ -5,8 +5,8 @@ everything jetstream owns in that repo (decision 6):
 
 - **owned files**: each pack's ``files/<pack>/``, copied as-is; the files
   generated from each pack's ``parts/<pack>/`` (``.pre-commit-config.yaml``,
-  ``.github/dependabot.yml``); and each pack's ``docs/<pack>/``, written to
-  ``.jetstream/docs/<pack>/`` (decision 16);
+  ``.github/dependabot.yml``, ``jetstream-nightly-sca.yaml``); and each pack's
+  ``docs/<pack>/``, written to ``.jetstream/docs/<pack>/`` (decision 16);
 - **the .gitignore block** between ``# >>> jetstream`` and ``# <<< jetstream``,
   from each pack's ``parts/<pack>/gitignore``;
 - **jetstream's pyproject.toml keys** (decision 7), from each pack's
@@ -52,6 +52,7 @@ DOC_HEADER: Final[str] = "<!-- Written by `jetstream sync` from cloudfeaster/jet
 GENERATED_FILES: Final[dict[str, str]] = {
     "pre-commit-config.yaml": ".pre-commit-config.yaml",
     "dependabot.yml": ".github/dependabot.yml",
+    "nightly-sca.yaml": ".github/workflows/jetstream-nightly-sca.yaml",
 }
 
 PACKAGE: Final[Traversable] = files("jetstream")

@@ -1,0 +1,10 @@
+# Written by `jetstream sync` (core pack); don't edit.
+#
+# jetstream's temporary exceptions for vulnerabilities in the tools it
+# installs. run-trivy.sh reads this with the repo's own .trivyignore, which is
+# only for the repo's own dependencies. A finding in jetstream's tools is
+# fixed, or excepted here, in a jetstream release; never in the repo.
+#
+# One line per vulnerability, expiring 7 days out, so it's reviewed again:
+#
+#   CVE-2026-12345 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-day cooldown

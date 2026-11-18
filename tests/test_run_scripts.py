@@ -5,6 +5,7 @@ to check that each one finds the tools installed next to it.
 """
 
 import functools
+import re
 import shutil
 import subprocess
 import sys
@@ -210,6 +211,30 @@ def test_gitleaks_finds_a_committed_secret(repo: Path, run: Run) -> None:
     result: subprocess.CompletedProcess[str] = run(repo, "run-gitleaks.sh")
     assert result.returncode != 0
     assert "leaks found" in result.stdout + result.stderr
+
+
+# --- trivy
+
+
+@pytest.mark.integration  # downloads trivy's vulnerability database
+def test_trivy_reads_jetstreams_and_the_repos_exceptions(repo: Path, run: Run) -> None:
+    add(repo, {"requirements.txt": "requests==2.31.0\n"})  # has known MEDIUM advisories
+    found: subprocess.CompletedProcess[str] = run(repo, "run-trivy.sh")
+    assert found.returncode != 0
+    ids: list[str] = sorted(set(re.findall(r"CVE-\d{4}-\d+", found.stdout)))
+    assert ids, found.stdout
+    exceptions: str = "".join(f"{vuln_id} exp:2099-01-01\n" for vuln_id in ids)
+
+    (repo / ".jetstream").mkdir()
+    (repo / ".jetstream" / "trivyignore").write_text(exceptions)
+    assert run(repo, "run-trivy.sh").returncode == 0
+
+    (repo / ".jetstream" / "trivyignore").unlink()
+    (repo / ".trivyignore").write_text(exceptions)
+    assert run(repo, "run-trivy.sh").returncode == 0
+
+    (repo / ".trivyignore").write_text("".join(f"{vuln_id} exp:2000-01-01\n" for vuln_id in ids))  # expired
+    assert run(repo, "run-trivy.sh").returncode != 0
 
 
 # --- unit-tests
