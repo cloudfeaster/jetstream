@@ -123,6 +123,7 @@ def test_core_owns_its_files() -> None:
         ".github/dependabot.yml",
         ".github/workflows/jetstream-lint.yaml",
         ".github/workflows/jetstream-nightly-sca.yaml",
+        ".github/workflows/jetstream-prune-trivyignore.yaml",
         ".jetstream/trivyignore",
         ".jsonlintignore",
         ".pre-commit-config.yaml",
@@ -162,6 +163,7 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
     assert ".github/workflows/jetstream-python-ci.yaml" in want.files
     assert ".github/workflows/jetstream-prune-constraints.yaml" in want.files
     assert ".github/workflows/jetstream-prune-exclude-newer-package.yaml" in want.files
+    assert ".github/workflows/jetstream-prune-pip-audit-ignore.yaml" in want.files
     assert ".claude/skills/jetstream-patch-vuln/python.md" in want.files  # beside core's SKILL.md
     nightly: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-nightly-sca.yaml"].content)
     assert [step["name"] for step in nightly["jobs"]["sca"]["steps"]][-2:] == ["trivy", "pip-audit"]
