@@ -63,6 +63,8 @@ pre-commit run --all-files
 
 A repo can't add hooks. It adds a check by adding a test, which the `unit-tests` hook runs.
 
+A slow test, such as one that needs the network, is marked `@pytest.mark.integration`. No hook runs those: the `jetstream-lint.yaml` workflow runs them after the hooks, with `run-integration-tests.sh`, which you can also run yourself.
+
 ## Vulnerabilities
 
 The `trivy` hook scans the lockfiles at every commit, and the `jetstream-nightly-sca.yaml` workflow scans them every night, so a new advisory fails without anyone pushing. GitHub emails a failed run to whoever last changed the workflow's schedule, usually whoever committed the `jetstream sync` that wrote it.

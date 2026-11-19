@@ -532,6 +532,26 @@ def test_unit_tests_fail_a_failing_test_but_skip_integration_tests(repo: Path, r
     assert "1 failed, 1 deselected" in result.stdout
 
 
+def test_integration_tests_run_only_the_integration_tests(repo: Path, run: Run) -> None:
+    """run-integration-tests.sh runs the tests marked integration, and only those."""
+    add(
+        repo,
+        {
+            "pyproject.toml": '[tool.pytest.ini_options]\nmarkers = ["integration: slow"]\n',
+            "tests/test_a.py": ("import pytest\n\n\ndef test_unit():\n    assert False\n\n\n@pytest.mark.integration\ndef test_integration():\n    assert False\n"),
+        },
+    )
+    result: subprocess.CompletedProcess[str] = run(repo, "run-integration-tests.sh")
+    assert result.returncode == 1
+    assert "1 failed, 1 deselected" in result.stdout
+
+
+def test_integration_tests_pass_when_there_are_none(repo: Path, run: Run) -> None:
+    """A repo with no integration tests passes, though pytest exits 5 when it collects none."""
+    add(repo, {"tests/test_a.py": "def test_unit():\n    pass\n"})
+    assert run(repo, "run-integration-tests.sh").returncode == 0
+
+
 # The python pack's keys, with pytest importing a.py from the repo's root.
 COVERAGE_PYPROJECT: Final[str] = PYTHON_PYPROJECT + '\n[tool.pytest.ini_options]\npythonpath = ["."]\n'
 COVERED_MODULE: Final[str] = "def double(x):\n    return 2 * x\n"

@@ -1,0 +1,44 @@
+---
+# Written by `jetstream sync` (python pack); don't edit.
+#
+# Builds the repo's sdist and wheel, to prove they still build. Nothing is
+# kept: in jetstream itself the wheel holds the tools' binaries, and a
+# jetstream wheel is never kept anywhere but the machine that built it
+# (jetstream's README, "How jetstream is distributed"), and publishing any
+# wheel needs a licensing review first (licensing.md). The lint, tests and
+# scans are in jetstream-lint.yaml.
+name: jetstream python CI
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # superseded PR runs are cancelled; runs on main always finish
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: jetstream python CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          # No Actions cache, as in jetstream-lint.yaml.
+          enable-cache: false
+
+      - name: Build the sdist and wheel
+        run: uv build
