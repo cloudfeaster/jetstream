@@ -12,6 +12,8 @@ The python pack is for a repo whose own code is Python. It adds these hooks to c
 | `deptry` | the dependencies in `pyproject.toml` against what the code imports: every import is declared, every dependency is used, and no dev dependency is imported; deptry's defaults leave out `tests/` |
 | `pyscn` | a health score for complexity, dead code, clones, coupling and cohesion, which must be at least 90; `pyscn analyze --html .` shows the details |
 
+The pack also installs coverage, and core's `unit-tests` hook then runs the tests under it: the hook fails if coverage is below 80% (branch coverage, of every `*.py` file except `tests/`, so a file no test imports counts as 0%). `.coverage` is left behind, so `coverage html` shows what's missed.
+
 None of the hooks changes a file. To fix what ruff reports:
 
 ```bash

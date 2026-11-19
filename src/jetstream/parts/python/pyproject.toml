@@ -40,3 +40,16 @@ exclude_dirs = ["tests"]
 skips = [
     "B101",  # assert: as ruff's S101
 ]
+
+# coverage (core's run-unit-tests.sh runs the tests under coverage when the
+# python pack installs it). Every *.py file in the repo except the tests, so
+# a file no test imports counts as 0%.
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
