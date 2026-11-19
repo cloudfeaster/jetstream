@@ -124,6 +124,7 @@ def test_core_owns_its_files() -> None:
         ".github/workflows/jetstream-lint.yaml",
         ".github/workflows/jetstream-nightly-sca.yaml",
         ".github/workflows/jetstream-prune-trivyignore.yaml",
+        ".github/workflows/jetstream-sync-dependabot-alerts.yaml",
         ".jetstream/trivyignore",
         ".jsonlintignore",
         ".pre-commit-config.yaml",

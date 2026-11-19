@@ -5,6 +5,7 @@ to check that each one finds the tools installed next to it.
 """
 
 import functools
+import json
 import re
 import shutil
 import subprocess
@@ -601,6 +602,67 @@ def test_prune_pip_audit_ignore_names_only_the_redundant_exceptions(repo: Path, 
     assert result.returncode == 1, result.stdout + result.stderr
     assert "prune: .pip-audit-ignore: CVE-2024-56326: still needed" in result.stdout
     assert "prune: .pip-audit-ignore: PYSEC-2000-1: redundant" in result.stdout
+
+
+# --- sync-dependabot-alerts
+
+
+def fake_gh(tmp_path: Path, alerts: list[dict[str, object]]) -> tuple[Path, Path]:
+    """Return a folder holding a fake gh, which lists ``alerts`` and logs every call, and its log."""
+    folder: Path = tmp_path / "fake-gh"
+    folder.mkdir()
+    log: Path = tmp_path / "gh.log"
+    log.touch()
+    (tmp_path / "alerts.json").write_text(json.dumps(alerts))
+    gh: Path = folder / "gh"
+    gh.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{log}"\nif [[ "$2" == --paginate ]]; then cat "{tmp_path / "alerts.json"}"; fi\n')
+    gh.chmod(0o755)
+    return folder, log
+
+
+def dependabot_alert(number: int, cve: str, dismissed_comment: str | None = None) -> dict[str, object]:
+    """Return a Dependabot alert for ``cve``, dismissed with ``dismissed_comment`` if it's given."""
+    return {
+        "number": number,
+        "state": "open" if dismissed_comment is None else "dismissed",
+        "dismissed_comment": dismissed_comment,
+        "dismissed_reason": None if dismissed_comment is None else "tolerable_risk",
+        "security_advisory": {"ghsa_id": f"GHSA-{number}", "identifiers": [{"type": "CVE", "value": cve}]},
+    }
+
+
+def test_sync_dependabot_alerts_applies_each_change(repo: Path, system_path: str, tmp_path: Path) -> None:
+    """An accepted alert is dismissed, the sync's own dismissal with no exception is reopened, and anyone else's is left alone."""
+    gh_folder: Path
+    log: Path
+    gh_folder, log = fake_gh(
+        tmp_path,
+        [
+            dependabot_alert(1, "CVE-2099-1"),
+            dependabot_alert(2, "CVE-2099-2", dismissed_comment="[jetstream exceptions] gone"),
+            dependabot_alert(3, "CVE-2099-3", dismissed_comment="by hand"),
+        ],
+    )
+    add(repo, {".trivyignore": "CVE-2099-1  # why\nCVE-2099-3\n"})
+    result: subprocess.CompletedProcess[str] = run_script(f"{gh_folder}:{system_path}", repo, "run-sync-dependabot-alerts.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert log.read_text().splitlines() == [
+        "api --paginate repos/{owner}/{repo}/dependabot/alerts?state=open,dismissed&per_page=100",
+        "api --silent -X PATCH repos/{owner}/{repo}/dependabot/alerts/1 -f state=dismissed -f dismissed_reason=tolerable_risk -f dismissed_comment=[jetstream exceptions] .trivyignore (exp none): why",
+        "api --silent -X PATCH repos/{owner}/{repo}/dependabot/alerts/2 -f state=open",
+    ]
+    assert "sync: #3 GHSA-3: dismissed (tolerable_risk) by someone other than the sync, so left alone" in result.stderr
+
+
+def test_sync_dependabot_alerts_changes_nothing_when_they_match(repo: Path, system_path: str, tmp_path: Path) -> None:
+    """With nothing to change, only the alerts are fetched."""
+    gh_folder: Path
+    log: Path
+    gh_folder, log = fake_gh(tmp_path, [dependabot_alert(1, "CVE-2099-1")])
+    result: subprocess.CompletedProcess[str] = run_script(f"{gh_folder}:{system_path}", repo, "run-sync-dependabot-alerts.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "sync: the Dependabot alerts already match the exceptions" in result.stdout
+    assert len(log.read_text().splitlines()) == 1
 
 
 # --- unit-tests

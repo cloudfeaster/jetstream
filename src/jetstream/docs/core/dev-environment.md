@@ -74,6 +74,8 @@ A finding is fixed by whoever owns the vulnerable package. `uv tree --invert --p
 
 An exception expires 7 days out, so it's reviewed again: `CVE-2026-12345 exp:2026-12-01  # why, and when to look again`.
 
+Dependabot doesn't read the exception files, so the `jetstream-sync-dependabot-alerts.yaml` workflow dismisses the alerts for accepted vulnerabilities, and reopens them once their exceptions go. It runs as a GitHub App, which an org owner sets up once: see [dependabot-alerts.md](dependabot-alerts.md).
+
 The nightly `jetstream-prune-trivyignore.yaml` workflow fails, naming the exception, once trivy no longer finds what an exception in `.trivyignore` is for, so it's removed rather than left until its date (`run-prune-trivyignore.sh`).
 
 In Claude Code, `/jetstream-patch-vuln <ID>` works through a finding this way.
