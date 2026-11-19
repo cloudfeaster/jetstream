@@ -45,7 +45,7 @@ Find why the package is there with `uv tree --invert --package <name> --frozen`,
     ]
     ```
 
-    A constraint restricts the version uv picks without making the package a dependency, so deptry doesn't flag it as unused and it isn't in the published package's metadata. Remove it once the parents require a fixed version themselves.
+    A constraint restricts the version uv picks without making the package a dependency, so deptry doesn't flag it as unused and it isn't in the published package's metadata. Remove it once the parents require a fixed version themselves: the nightly `jetstream-prune-constraints.yaml` fails, naming it, when they do. Only a floor (`>=`) can be checked that way.
 
 1. **No usable fix yet**: add an exception (`SKILL.md` step 3b item 2) to whichever of `.pip-audit-ignore` and `.trivyignore` reports it.
 

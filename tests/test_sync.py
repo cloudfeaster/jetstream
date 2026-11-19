@@ -160,6 +160,8 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
     assert ".jetstream/docs/python/python.md" in want.files
     assert ".jetstream/pip-audit-ignore" in want.files
     assert ".github/workflows/jetstream-python-ci.yaml" in want.files
+    assert ".github/workflows/jetstream-prune-constraints.yaml" in want.files
+    assert ".github/workflows/jetstream-prune-exclude-newer-package.yaml" in want.files
     assert ".claude/skills/jetstream-patch-vuln/python.md" in want.files  # beside core's SKILL.md
     nightly: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-nightly-sca.yaml"].content)
     assert [step["name"] for step in nightly["jobs"]["sca"]["steps"]][-2:] == ["trivy", "pip-audit"]
