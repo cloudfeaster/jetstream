@@ -43,3 +43,7 @@ jobs:
       - name: trivy
         if: ${{ !cancelled() }}
         run: uv run --no-sync run-trivy.sh
+
+      - name: pip-audit
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync run-pip-audit.sh

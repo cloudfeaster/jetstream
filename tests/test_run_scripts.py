@@ -31,6 +31,7 @@ SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
     "basename",
     "cat",
     "cmp",
+    "date",
     "dirname",
     "env",
     "git",
@@ -38,6 +39,7 @@ SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
     "mktemp",
     "rm",
     "sed",
+    "uv",
 )
 
 
@@ -441,6 +443,71 @@ def test_trivy_reads_jetstreams_and_the_repos_exceptions(repo: Path, run: Run) -
 
     (repo / ".trivyignore").write_text("".join(f"{vuln_id} exp:2000-01-01\n" for vuln_id in ids))  # expired
     assert run(repo, "run-trivy.sh").returncode != 0
+
+
+# --- pip-audit and licensecheck
+
+
+def lock(repo: Path, dependency: str) -> None:
+    """Give ``repo`` a project depending on ``dependency``, with its uv.lock, and stage them."""
+    add(repo, {"pyproject.toml": PYTHON_PYPROJECT + f'\n[project]\nname = "a"\nversion = "0"\nrequires-python = "==3.13.*"\ndependencies = ["{dependency}"]\n'})
+    uv: str | None = shutil.which("uv")
+    assert uv is not None
+    subprocess.run([uv, "lock", "--quiet"], cwd=repo, check=True)  # noqa: S603 (only the tests' own arguments)
+    git(repo, "add", "uv.lock")
+
+
+@pytest.mark.integration  # locks from PyPI, and looks up advisories
+def test_pip_audit_reads_jetstreams_and_the_repos_exceptions(repo: Path, run: Run) -> None:
+    """A finding is ignored when either .jetstream/pip-audit-ignore or .pip-audit-ignore lists it, until the exception expires."""
+    lock(repo, "jinja2==3.1.4")  # has known advisories
+    found: subprocess.CompletedProcess[str] = run(repo, "run-pip-audit.sh")
+    assert found.returncode != 0
+    ids: list[str] = sorted(set(re.findall(r"\b(?:PYSEC|GHSA)-[\w-]+", found.stdout)))
+    assert ids, found.stdout + found.stderr
+    exceptions: str = "".join(f"{vuln_id} exp:2099-01-01  # why\n" for vuln_id in ids)
+
+    (repo / ".jetstream").mkdir()
+    (repo / ".jetstream" / "pip-audit-ignore").write_text(exceptions)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-pip-audit.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    (repo / ".jetstream" / "pip-audit-ignore").unlink()
+    (repo / ".pip-audit-ignore").write_text(exceptions)
+    assert run(repo, "run-pip-audit.sh").returncode == 0
+
+    (repo / ".pip-audit-ignore").write_text("".join(f"{vuln_id} exp:2000-01-01\n" for vuln_id in ids))  # expired
+    assert run(repo, "run-pip-audit.sh").returncode != 0
+
+
+def test_pip_audit_fails_a_malformed_exception(repo: Path, run: Run) -> None:
+    """An exception with something other than exp:YYYY-MM-DD after its ID fails, naming the file."""
+    add(repo, {".pip-audit-ignore": "PYSEC-2026-1 2026-12-01\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-pip-audit.sh")
+    assert result.returncode != 0
+    assert ".pip-audit-ignore: 'PYSEC-2026-1 2026-12-01': expected exp:YYYY-MM-DD" in result.stderr
+
+
+@pytest.mark.integration  # locks from PyPI, and looks up licenses
+def test_licensecheck_passes_an_allowed_license(repo: Path, run: Run) -> None:
+    """An MIT-licensed dependency passes."""
+    lock(repo, "tomlkit==0.15.2")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-licensecheck.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.integration  # locks from PyPI, and looks up licenses
+def test_licensecheck_fails_a_license_jetstream_doesnt_allow(repo: Path, run: Run) -> None:
+    """An LGPL-licensed dependency fails, unless it's one of jetstream's ignore_packages."""
+    lock(repo, "paramiko==4.0.0")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-licensecheck.sh")
+    assert result.returncode != 0
+    assert "paramiko" in result.stdout
+
+    pyproject: str = (repo / "pyproject.toml").read_text().replace("ignore_packages = []", 'ignore_packages = ["paramiko"]')
+    (repo / "pyproject.toml").write_text(pyproject)
+    result = run(repo, "run-licensecheck.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 # --- unit-tests

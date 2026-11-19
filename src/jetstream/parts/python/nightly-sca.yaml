@@ -1,0 +1,11 @@
+---
+# The python pack's step in the nightly SCA workflow. `jetstream sync`
+# appends what follows the marker to core's steps; the lines above it make
+# this file valid YAML.
+jobs:
+  sca:
+    steps:
+      # >>> jetstream: appended
+      - name: pip-audit
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync run-pip-audit.sh
