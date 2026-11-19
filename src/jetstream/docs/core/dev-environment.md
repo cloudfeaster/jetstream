@@ -51,7 +51,7 @@ The pre-commit hooks, which CI also runs (`pre-commit run --all-files`), all cal
 | `check-svg` | diagrams match their D2 sources ([diagrams.md](diagrams.md)) |
 | `gitleaks` | no secrets in the git history; a false positive goes in `.gitleaksignore` |
 | `trivy` | no known vulnerabilities in the lockfiles (see [Vulnerabilities](#vulnerabilities)) |
-| `unit-tests` | the repo's tests pass (pytest, leaving out those marked `integration`) |
+| `unit-tests` | the repo's tests pass (pytest, leaving out those marked `integration`); with the python pack, under coverage too (see its `python.md`) |
 
 To run them all, as CI does:
 

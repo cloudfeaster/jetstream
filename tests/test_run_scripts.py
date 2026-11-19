@@ -465,6 +465,53 @@ def test_unit_tests_fail_a_failing_test_but_skip_integration_tests(repo: Path, r
     assert "1 failed, 1 deselected" in result.stdout
 
 
+# The python pack's keys, with pytest importing a.py from the repo's root.
+COVERAGE_PYPROJECT: Final[str] = PYTHON_PYPROJECT + '\n[tool.pytest.ini_options]\npythonpath = ["."]\n'
+COVERED_MODULE: Final[str] = "def double(x):\n    return 2 * x\n"
+COVERED_MODULE_TEST: Final[str] = "from a import double\n\n\ndef test_double():\n    assert double(2) == 4\n"
+
+
+def test_unit_tests_pass_above_the_coverage_floor(repo: Path, run: Run) -> None:
+    """With coverage installed, as the python pack does, the tests run under it and it reports."""
+    add(repo, {"pyproject.toml": COVERAGE_PYPROJECT, "a.py": COVERED_MODULE, "tests/test_a.py": COVERED_MODULE_TEST})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-unit-tests.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout
+    assert re.search(r"^TOTAL .* 100%$", result.stdout, re.MULTILINE)
+
+
+def test_unit_tests_fail_below_the_coverage_floor(repo: Path, run: Run) -> None:
+    """Passing tests fail the hook when coverage is below fail_under; a file no test imports counts."""
+    add(
+        repo,
+        {
+            "pyproject.toml": COVERAGE_PYPROJECT,
+            "a.py": COVERED_MODULE,
+            "b.py": "def untested(x):\n" + "".join(f"    x = x + {i}\n" for i in range(10)) + "    return x\n",
+            "tests/test_a.py": COVERED_MODULE_TEST,
+        },
+    )
+    result: subprocess.CompletedProcess[str] = run(repo, "run-unit-tests.sh")
+    assert result.returncode != 0
+    assert "1 passed" in result.stdout
+    assert "b.py" in result.stdout
+    assert "fail-under=80" in result.stdout
+
+
+def test_unit_tests_run_plain_pytest_without_coverage(repo: Path, run: Run, tmp_path: Path) -> None:
+    """Without coverage installed next to it (core alone), the script runs pytest by itself."""
+    bin_dir: Path = tmp_path / "core-bin"
+    bin_dir.mkdir()
+    shutil.copy(VENV_BIN / "run-unit-tests.sh", bin_dir)
+    (bin_dir / "pytest").symlink_to(VENV_BIN / "pytest")
+    add(repo, {"pyproject.toml": COVERAGE_PYPROJECT, "a.py": COVERED_MODULE, "tests/test_a.py": COVERED_MODULE_TEST})
+    result: subprocess.CompletedProcess[str] = run(repo, str(bin_dir / "run-unit-tests.sh"))
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout
+    assert "TOTAL" not in result.stdout
+    assert not (repo / ".coverage").exists()
+
+
 # --- d2-compile and check-svg
 
 
