@@ -1,6 +1,6 @@
 ---
 name: jetstream-patch-vuln
-description: Review and resolve one vulnerability from a dependency scan - trivy, or a pack's scanner such as pip-audit - that is newly failing, or whose temporary exception has expired or is about to. Works out who owns the vulnerable package (jetstream's tools or the repo's own dependencies), then fixes it, adds a dated exception, or says the fix belongs in jetstream; then verifies, commits and opens a pull request. Use when the user says things like "review CVE-...", "patch CVE-...", "trivy failed", "nightly SCA failed", when the trivy or another scan hook blocks a commit, or when .trivyignore or .jetstream/trivyignore needs attention.
+description: Review and resolve one vulnerability from a dependency scan - trivy, or a pack's scanner such as pip-audit - that is newly failing, or whose temporary exception has expired or is about to. Works out who owns the vulnerable package (jetstream's tools or the repo's own dependencies), then fixes it, adds a dated exception, or says the fix belongs in jetstream; then verifies, commits and opens a pull request. Use when the user says things like "review CVE-...", "patch CVE-...", "trivy failed", "nightly SCA failed", when the trivy or another scan hook blocks a commit, or when .trivyignore, .jetstream/trivyignore or a pack's ignore file such as .pip-audit-ignore needs attention.
 ---
 
 # Patch a vulnerability
