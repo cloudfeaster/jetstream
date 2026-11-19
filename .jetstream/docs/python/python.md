@@ -39,8 +39,10 @@ A `# noqa: <code>` comment turns off one finding on one line. Name the rule, and
 pip-audit's exceptions work as trivy's do (see [dev-environment.md](../core/dev-environment.md#vulnerabilities)), in the same format: a finding in jetstream's tools is excepted in jetstream's `.jetstream/pip-audit-ignore`, in a release, and a finding in the repo's own dependencies in its `.pip-audit-ignore`. An exception stops applying on its `exp:` date:
 
 ```text
-PYSEC-2026-1475 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-day cooldown
+CVE-2026-12345 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-day cooldown
 ```
+
+Use the CVE ID, or the GHSA ID if there's no CVE: pip-audit matches an exception against a finding's aliases, so the same ID works in `.trivyignore`. To force a transitive dependency up to a fixed version, add a `[tool.uv] constraint-dependencies` entry rather than a dependency. In Claude Code, `/jetstream-patch-vuln <ID>` works through a finding.
 
 ## licensecheck's policy
 
