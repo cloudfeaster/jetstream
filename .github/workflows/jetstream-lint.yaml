@@ -4,7 +4,7 @@
 # One job, "jetstream lint", so the org ruleset can require one stable
 # status check. It runs what a developer's git hooks run (decision 10):
 # uv sync installs jetstream's tools, then jetstream check and every
-# pre-commit hook.
+# pre-commit hook. Then the tests marked integration, which no hook runs.
 name: jetstream lint
 
 on:  # yamllint disable-line rule:truthy
@@ -53,3 +53,7 @@ jobs:
           # CI's checkout of main is a branch, but no one is committing to it
           SKIP: no-commit-to-branch
         run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
+
+      - name: integration tests
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync run-integration-tests.sh
