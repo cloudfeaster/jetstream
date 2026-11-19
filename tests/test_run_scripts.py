@@ -567,6 +567,42 @@ def test_prune_stops_when_the_lock_is_out_of_date(repo: Path, run: Run) -> None:
     assert "doesn't lock as it is, so nothing was checked" in result.stderr
 
 
+# --- prune trivyignore and pip-audit-ignore
+
+
+@pytest.mark.parametrize(("script", "exceptions"), [("run-prune-trivyignore.sh", ".trivyignore"), ("run-prune-pip-audit-ignore.sh", ".pip-audit-ignore")])
+def test_prune_exceptions_passes_with_nothing_to_check(repo: Path, run: Run, script: str, exceptions: str) -> None:
+    """Without an unexpired exception there's nothing to scan for, so the script passes without scanning."""
+    add(repo, {"pyproject.toml": '[project]\nname = "a"\n', exceptions: "# a comment\nCVE-2000-0001 exp:2000-01-01  # expired\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, script)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "exceptions to check" in result.stdout
+
+
+@pytest.mark.integration  # downloads trivy's vulnerability database
+def test_prune_trivyignore_names_only_the_redundant_exceptions(repo: Path, run: Run) -> None:
+    """An exception matching a finding's CVE or GHSA ID is still needed; one matching nothing is redundant; an expired one isn't checked."""
+    add(repo, {"requirements.txt": "requests==2.31.0\n"})  # has known MEDIUM advisories, among them CVE-2024-35195 (GHSA-9wx4-h78v-vm56)
+    add(repo, {".trivyignore": "CVE-2024-35195 exp:2099-01-01  # why\nGHSA-9wx4-h78v-vm56 exp:2099-01-01\nCVE-2000-0001 exp:2099-01-01\nCVE-2000-0002 exp:2000-01-01\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-prune-trivyignore.sh")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "prune: .trivyignore: CVE-2024-35195: still needed" in result.stdout
+    assert "prune: .trivyignore: GHSA-9wx4-h78v-vm56: still needed" in result.stdout
+    assert "prune: .trivyignore: CVE-2000-0001: redundant" in result.stdout
+    assert "CVE-2000-0002" not in result.stdout
+
+
+@pytest.mark.integration  # locks from PyPI, and looks up advisories
+def test_prune_pip_audit_ignore_names_only_the_redundant_exceptions(repo: Path, run: Run) -> None:
+    """An exception matching a finding's ID or alias is still needed; one matching nothing is redundant."""
+    lock(repo, "jinja2==3.1.4")  # has known advisories, among them PYSEC-2026-1475 (CVE-2024-56326)
+    add(repo, {".pip-audit-ignore": "CVE-2024-56326 exp:2099-01-01  # why\nPYSEC-2000-1 exp:2099-01-01\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-prune-pip-audit-ignore.sh")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "prune: .pip-audit-ignore: CVE-2024-56326: still needed" in result.stdout
+    assert "prune: .pip-audit-ignore: PYSEC-2000-1: redundant" in result.stdout
+
+
 # --- unit-tests
 
 
