@@ -31,11 +31,13 @@ SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
     "basename",
     "cat",
     "cmp",
+    "cp",
     "date",
     "dirname",
     "env",
     "git",
     "grep",
+    "mkdir",
     "mktemp",
     "rm",
     "sed",
@@ -508,6 +510,61 @@ def test_licensecheck_fails_a_license_jetstream_doesnt_allow(repo: Path, run: Ru
     (repo / "pyproject.toml").write_text(pyproject)
     result = run(repo, "run-licensecheck.sh")
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# --- prune constraints and exclude-newer-package
+
+# The prune scripts' exit status when they couldn't check the entries.
+PRUNE_ERROR: Final[int] = 2
+
+
+def lock_project(repo: Path, uv_table: str) -> None:
+    """Give ``repo`` a project depending on flask 3.0.0 (which needs Jinja2>=3.1.2), with ``uv_table`` and its uv.lock."""
+    add(repo, {"pyproject.toml": f'[project]\nname = "a"\nversion = "0"\nrequires-python = "==3.13.*"\ndependencies = ["flask==3.0.0"]\n\n[tool.uv]\n{uv_table}'})
+    uv: str | None = shutil.which("uv")
+    assert uv is not None
+    subprocess.run([uv, "lock", "--quiet"], cwd=repo, check=True)  # noqa: S603 (only the tests' own arguments)
+    git(repo, "add", "uv.lock")
+
+
+@pytest.mark.parametrize("script", ["run-prune-constraints.sh", "run-prune-exclude-newer-package.sh"])
+def test_prune_passes_with_nothing_to_check(repo: Path, run: Run, script: str) -> None:
+    """A repo with no entries passes without locking anything."""
+    add(repo, {"pyproject.toml": '[project]\nname = "a"\n'})
+    result: subprocess.CompletedProcess[str] = run(repo, script)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "prune: no [tool.uv]" in result.stdout
+
+
+@pytest.mark.integration  # locks from PyPI
+def test_prune_constraints_names_only_the_redundant_one(repo: Path, run: Run) -> None:
+    """A floor flask already requires is redundant; a higher one is still needed; the repo's files don't change."""
+    lock_project(repo, 'constraint-dependencies = [\n    "jinja2>=3.1.6",  # CVE-2025-27516\n    "Jinja2>=3.1.2",\n]\n')
+    before: str = (repo / "pyproject.toml").read_text() + (repo / "uv.lock").read_text()
+    result: subprocess.CompletedProcess[str] = run(repo, "run-prune-constraints.sh")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "prune: jinja2>=3.1.6: still needed" in result.stdout
+    assert "prune: Jinja2>=3.1.2: redundant" in result.stdout
+    assert (repo / "pyproject.toml").read_text() + (repo / "uv.lock").read_text() == before
+
+
+@pytest.mark.integration  # locks from PyPI
+def test_prune_exclude_newer_package_names_an_override_that_changes_nothing(repo: Path, run: Run) -> None:
+    """An override for a package locked at an old release is redundant."""
+    lock_project(repo, 'exclude-newer = "7 days"\nexclude-newer-package = { flask = "2026-11-19T00:00:00Z" }\n')
+    result: subprocess.CompletedProcess[str] = run(repo, "run-prune-exclude-newer-package.sh")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "prune: flask: redundant, so remove it (3.0.0 locks without it)" in result.stdout
+
+
+@pytest.mark.integration  # locks from PyPI
+def test_prune_stops_when_the_lock_is_out_of_date(repo: Path, run: Run) -> None:
+    """A uv.lock that doesn't match pyproject.toml is an error, not a list of redundant entries."""
+    lock_project(repo, 'constraint-dependencies = ["jinja2>=3.1.6"]\n')
+    (repo / "pyproject.toml").write_text((repo / "pyproject.toml").read_text().replace("flask==3.0.0", "flask==3.0.1"))
+    result: subprocess.CompletedProcess[str] = run(repo, "run-prune-constraints.sh")
+    assert result.returncode == PRUNE_ERROR, result.stdout + result.stderr
+    assert "doesn't lock as it is, so nothing was checked" in result.stderr
 
 
 # --- unit-tests

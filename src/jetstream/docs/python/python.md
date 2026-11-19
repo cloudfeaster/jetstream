@@ -44,6 +44,17 @@ CVE-2026-12345 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-d
 
 Use the CVE ID, or the GHSA ID if there's no CVE: pip-audit matches an exception against a finding's aliases, so the same ID works in `.trivyignore`. To force a transitive dependency up to a fixed version, add a `[tool.uv] constraint-dependencies` entry rather than a dependency. In Claude Code, `/jetstream-patch-vuln <ID>` works through a finding.
 
+## Pruning `[tool.uv]`
+
+Two `[tool.uv]` lists in `pyproject.toml` hold entries that are only needed for a while, and never expire. Each has a nightly workflow that fails, naming the entry, once it no longer changes what uv locks, so it can be removed:
+
+| Workflow | Checks | Redundant when |
+|---|---|---|
+| `jetstream-prune-constraints.yaml` | `constraint-dependencies`, each a floor such as `"foo>=1.2.3",  # CVE-2026-12345` | the dependencies allow nothing older: a copy of the project with `foo<1.2.3` instead can't lock |
+| `jetstream-prune-exclude-newer-package.yaml` | `exclude-newer-package` overrides, each letting a package past the 7-day cooldown | the version it let in has cleared the cooldown: a copy of the project without it locks the same version |
+
+They lock a copy of `pyproject.toml` and `uv.lock`, never the repo's own. To run one yourself, run `run-prune-constraints.sh` or `run-prune-exclude-newer-package.sh`.
+
 ## licensecheck's policy
 
 jetstream sets `[tool.licensecheck]`: `only_licenses` (MIT, Apache and BSD) and `ignore_packages`, the exceptions. licensecheck can't tell a transitive dependency from a direct one, so an MPL-2.0 transitive dependency, which licensing.md allows, is added to `ignore_packages` by name. Like every license exception, that's a change to jetstream, not to the repo.
