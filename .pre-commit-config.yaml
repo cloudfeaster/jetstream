@@ -135,3 +135,17 @@ repos:
         language: system
         pass_filenames: false
         files: '\.py$'
+
+      - id: pip-audit
+        name: pip-audit (vulnerable Python dependencies)
+        entry: run-pip-audit.sh
+        language: system
+        pass_filenames: false
+        always_run: true  # as trivy: a new advisory fails without a change
+
+      - id: licensecheck
+        name: licensecheck (Python dependency licenses)
+        entry: run-licensecheck.sh
+        language: system
+        pass_filenames: false
+        files: '^(uv\.lock|pyproject\.toml)$'

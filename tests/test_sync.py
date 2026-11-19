@@ -153,11 +153,14 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
     config: dict[str, Any] = yaml.safe_load(want.files[".pre-commit-config.yaml"].content)
     hook_ids: list[str] = [hook["id"] for hook in config["repos"][0]["hooks"]]
     assert hook_ids[0] == "jetstream-check"  # core's hooks come first, in the same list
-    assert hook_ids[-5:] == ["ruff", "ty", "bandit", "deptry", "pyscn"]
+    assert hook_ids[-7:] == ["ruff", "ty", "bandit", "deptry", "pyscn", "pip-audit", "licensecheck"]
     text: str = want.files[".pre-commit-config.yaml"].content.decode()
     assert text.count("repos:") == 1  # only what follows the python part's marker is appended
     assert sync.PART_MARKER not in text
     assert ".jetstream/docs/python/python.md" in want.files
+    assert ".jetstream/pip-audit-ignore" in want.files
+    nightly: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-nightly-sca.yaml"].content)
+    assert [step["name"] for step in nightly["jobs"]["sca"]["steps"]][-2:] == ["trivy", "pip-audit"]
     assert want.pyproject_keys[("tool", "ruff", "lint", "select")] == ["ALL"]
     assert want.pyproject_keys[("tool", "uv", "exclude-newer")] == "7 days"  # core's keys too
 

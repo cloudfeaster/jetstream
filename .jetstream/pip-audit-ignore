@@ -1,0 +1,11 @@
+# Written by `jetstream sync` (python pack); don't edit.
+#
+# jetstream's temporary exceptions for vulnerabilities in the tools it
+# installs. run-pip-audit.sh reads this with the repo's own .pip-audit-ignore,
+# which is only for the repo's own dependencies. A finding in jetstream's tools
+# is fixed, or excepted here, in a jetstream release; never in the repo.
+#
+# One line per vulnerability, expiring 7 days out, so it's reviewed again (the
+# same format as .jetstream/trivyignore):
+#
+#   PYSEC-2026-1475 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-day cooldown
