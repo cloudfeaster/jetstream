@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/cloudfeaster/jetstream/compare/v0.3.0...v0.4.0) (2026-11-18)
+
+
+### Features
+
+* add the python pack, starting with ruff and ty ([#39](https://github.com/cloudfeaster/jetstream/issues/39)) ([b4f52cb](https://github.com/cloudfeaster/jetstream/commit/b4f52cb927beda76f8e6a487273ff5379e76e588))
+
 ## [0.3.0](https://github.com/cloudfeaster/jetstream/compare/v0.2.0...v0.3.0) (2026-11-18)
 
 
