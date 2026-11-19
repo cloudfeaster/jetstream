@@ -32,3 +32,11 @@ max-complexity = 30
 [tool.ruff.format]
 docstring-code-format = true
 docstring-code-line-length = 72
+
+# bandit (run-bandit.sh). Tests are left out: ruff's S rules, bandit's
+# rules ported, still check them.
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = [
+    "B101",  # assert: as ruff's S101
+]

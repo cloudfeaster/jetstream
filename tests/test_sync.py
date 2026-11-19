@@ -153,7 +153,7 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
     config: dict[str, Any] = yaml.safe_load(want.files[".pre-commit-config.yaml"].content)
     hook_ids: list[str] = [hook["id"] for hook in config["repos"][0]["hooks"]]
     assert hook_ids[0] == "jetstream-check"  # core's hooks come first, in the same list
-    assert hook_ids[-2:] == ["ruff", "ty"]
+    assert hook_ids[-5:] == ["ruff", "ty", "bandit", "deptry", "pyscn"]
     text: str = want.files[".pre-commit-config.yaml"].content.decode()
     assert text.count("repos:") == 1  # only what follows the python part's marker is appended
     assert sync.PART_MARKER not in text

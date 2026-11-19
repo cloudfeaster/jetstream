@@ -114,3 +114,24 @@ repos:
         language: system
         pass_filenames: false
         files: '(\.py|^pyproject\.toml|^uv\.lock)$'
+
+      - id: bandit
+        name: bandit (Python security scan)
+        entry: run-bandit.sh
+        language: system
+        pass_filenames: false
+        files: '(\.py|^pyproject\.toml)$'
+
+      - id: deptry
+        name: deptry (Python dependency check)
+        entry: run-deptry.sh
+        language: system
+        pass_filenames: false
+        files: '(\.py|^pyproject\.toml|^uv\.lock)$'
+
+      - id: pyscn
+        name: pyscn (Python code health score)
+        entry: run-pyscn.sh
+        language: system
+        pass_filenames: false
+        files: '\.py$'

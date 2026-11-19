@@ -29,6 +29,9 @@ core = [
     "zizmor==1.32.0",
 ]
 python = [
+    "bandit==1.9.4",
+    "deptry==0.25.1",
+    "pyscn==1.33.2",
     "ruff==0.17.4",
     "ty==0.0.101",
 ]
@@ -71,6 +74,14 @@ cache-keys = [
 
 [tool.jetstream]
 packs = ["core", "python"]
+
+[tool.deptry]
+known_first_party = ["jetstream"]  # under src/, where deptry doesn't look
+# The extras are the tools each pack installs, not code jetstream imports.
+optional_dependencies_dev_groups = ["core", "python", "website"]
+
+[tool.deptry.per_rule_ignores]
+DEP004 = ["hatchling"]  # hatch_build.py is the build hook, and hatchling the build backend
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -125,3 +136,7 @@ max-complexity = 30
 [tool.ruff.format]
 docstring-code-format = true
 docstring-code-line-length = 72
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]

@@ -46,8 +46,8 @@ def github_api(path: str, *, authenticate: bool = True) -> dict[str, Any]:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     try:
-        # The URL is written out here, so ruff's S310 can see it's https.
-        with urllib.request.urlopen(urllib.request.Request(f"https://api.github.com/{path}", headers=headers), timeout=API_TIMEOUT_SECONDS) as response:
+        # The URL is written out here, so ruff's S310 can see it's https; bandit's B310 can't.
+        with urllib.request.urlopen(urllib.request.Request(f"https://api.github.com/{path}", headers=headers), timeout=API_TIMEOUT_SECONDS) as response:  # nosec B310
             return json.load(response)
     except urllib.error.HTTPError as e:
         error: str = f"GitHub API {path}: {e.code} {e.reason}{why(e)}"
@@ -109,8 +109,8 @@ def fetch_text(path: str) -> str:
     """GET a release asset, by its URL after https://github.com/, as text."""
     url: str = f"https://github.com/{path}"  # for messages
     try:
-        # The URL is written out here, not taken from url, so ruff's S310 can see it's https.
-        with urllib.request.urlopen(f"https://github.com/{path}", timeout=API_TIMEOUT_SECONDS) as response:
+        # The URL is written out here, not taken from url, so ruff's S310 can see it's https; bandit's B310 can't.
+        with urllib.request.urlopen(f"https://github.com/{path}", timeout=API_TIMEOUT_SECONDS) as response:  # nosec B310
             return response.read().decode()
     except urllib.error.HTTPError as e:
         msg: str = f"{url}: {e.code} {e.reason}"
