@@ -145,8 +145,8 @@ def download(binary: Binary, cache_dir: Path) -> Path:
     try:
         digest: hashlib._Hash = hashlib.sha256()
         # The URL is written out here, not taken from binary.url, so ruff's S310
-        # can see it's https: a download can never open a file: or other URL.
-        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(f"https://github.com/{binary.path}", timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
+        # can see it's https: a download can never open a file: or other URL. bandit's B310 can't.
+        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(f"https://github.com/{binary.path}", timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:  # nosec B310
             while chunk := response.read(CHUNK_SIZE):
                 digest.update(chunk)
                 out.write(chunk)

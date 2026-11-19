@@ -296,6 +296,83 @@ def test_ty_passes_with_no_python(repo: Path, run: Run) -> None:
     assert run(repo, "run-ty.sh").returncode == 0
 
 
+# --- bandit, deptry and pyscn
+
+
+# A call bandit flags (B310), and ruff doesn't: the URL is https.
+URLOPEN_PYTHON: Final[str] = '"""A module."""\n\nimport urllib.request\n\nurllib.request.urlopen("https://example.com")\n'
+
+
+def test_bandit_passes_good_python(repo: Path, run: Run) -> None:
+    """A module with no security findings passes, and an assert is allowed."""
+    add(repo, {"pyproject.toml": PYTHON_PYPROJECT, "a.py": GOOD_PYTHON + "\nassert ANSWER\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-bandit.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_bandit_fails_a_finding(repo: Path, run: Run) -> None:
+    """A call to urlopen fails bandit's B310."""
+    add(repo, {"pyproject.toml": PYTHON_PYPROJECT, "a.py": URLOPEN_PYTHON})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-bandit.sh")
+    assert result.returncode != 0
+    assert "B310" in result.stdout
+
+
+def test_bandit_skips_tests(repo: Path, run: Run) -> None:
+    """A finding under tests/ isn't reported: ruff's S rules check the tests."""
+    add(repo, {"pyproject.toml": PYTHON_PYPROJECT, "tests/test_a.py": URLOPEN_PYTHON})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-bandit.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_bandit_passes_with_no_python(repo: Path, run: Run) -> None:
+    """A repo with no *.py files passes."""
+    assert run(repo, "run-bandit.sh").returncode == 0
+
+
+# A project with no dependencies, as deptry reads it.
+DEPTRY_PYPROJECT: Final[str] = '[project]\nname = "a"\nversion = "0"\ndependencies = []\n'
+
+
+def test_deptry_passes_declared_imports(repo: Path, run: Run) -> None:
+    """A module importing only the standard library passes."""
+    add(repo, {"pyproject.toml": DEPTRY_PYPROJECT, "a.py": '"""A module."""\n\nimport os\n'})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-deptry.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_deptry_fails_an_undeclared_import(repo: Path, run: Run) -> None:
+    """Importing a package the project doesn't declare fails DEP001."""
+    add(repo, {"pyproject.toml": DEPTRY_PYPROJECT, "a.py": '"""A module."""\n\nimport not_a_dependency\n'})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-deptry.sh")
+    assert result.returncode != 0
+    assert "DEP001" in result.stderr
+
+
+def test_pyscn_passes_good_python(repo: Path, run: Run) -> None:
+    """Simple code scores above the floor, and only the score is printed."""
+    add(repo, {"a.py": GOOD_PYTHON})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-pyscn.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert re.fullmatch(r"pyscn: health score \d+ \(A\)\n", result.stdout)
+    assert result.stderr == ""
+
+
+def test_pyscn_fails_below_the_floor(repo: Path, run: Run) -> None:
+    """Four copies of a 30-branch function score below 90."""
+    body: str = "".join(f"    if x == {i}:\n        y = x + {i}\n        return y * 2\n" for i in range(30))
+    functions: str = "".join(f'\n\ndef f{n}(x: int) -> int:\n    """Return something."""\n{body}    return 0\n' for n in range(4))
+    add(repo, {"a.py": '"""A module."""\n' + functions})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-pyscn.sh")
+    assert result.returncode != 0
+    assert "is below 90" in result.stderr
+
+
+def test_pyscn_passes_with_no_python(repo: Path, run: Run) -> None:
+    """A repo with no *.py files passes."""
+    assert run(repo, "run-pyscn.sh").returncode == 0
+
+
 # --- zizmor
 
 
