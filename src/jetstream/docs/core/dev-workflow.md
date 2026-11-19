@@ -4,7 +4,7 @@ How a change gets from an idea to the default branch (`main`) in a Cloudfeaster 
 
 ## The rules
 
-An org ruleset applies the same rules to every repo's default branch, and no one can bypass them, admins included:
+Org rulesets apply the same rules to the default branch of every repo that uses jetstream, and no one can bypass them, admins included ([org-setup.md](org-setup.md)):
 
 - changes reach `main` only through a pull request, and a direct `git push` to it is rejected;
 - the `jetstream lint` check (the `jetstream-lint.yaml` workflow) must pass, on a branch that's up to date with `main`;
