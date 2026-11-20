@@ -71,33 +71,11 @@ In Claude Code, `/jetstream-new-feature` does steps 1 to 3 and `/jetstream-ship`
 
 ## Taking a jetstream release
 
-Dependabot opens a pull request when jetstream releases, changing the tag in `pyproject.toml` and the lock in `uv.lock`. That's all Dependabot can change, so when a release also changes files jetstream owns, `jetstream check` fails on the pull request, naming each file:
+When jetstream releases, the `jetstream-update.yaml` workflow opens a pull request, `build(deps): update jetstream from vA to vB`, by the next morning. It changes the tag in `pyproject.toml`, the lock in `uv.lock`, and every file `jetstream sync` changes, in one commit ([jetstream-update.md](jetstream-update.md)). A repo takes a whole release or none of it, so the new tools can't merge with the old configuration.
 
-```text
-*** jetstream: .github/workflows/jetstream-lint.yaml differs from what jetstream writes
-*** jetstream: run `jetstream sync` and commit what it changes
-```
+1. **Review the pull request.** Its diff is what the release actually changes in this repo.
+1. **Merge it** once `jetstream lint` passes, as in step 4 above. Locally, `source cfg4dev.sh` then installs the new release.
 
-That's deliberate: a repo takes a whole release or none of it, so the new tools can't merge with the old configuration. A release that changes no owned files passes as it is, so just merge it. Otherwise, add `jetstream sync`'s changes to the pull request:
+Don't push to `jetstream/update`: the workflow makes its commit again, and resets the branch, each time a newer release comes out or `main` moves on. To fix something the release breaks in the repo, merge the update first, then fix it in a pull request of its own, or fix it in jetstream.
 
-1. **Check out the pull request** and set up the environment, which runs `uv sync` (installing the new release) and then `jetstream sync`:
-
-    ```bash
-    deactivate 2>/dev/null   # if another repo's .venv is active, so it can't shadow this one's jetstream
-    gh pr checkout <number>
-    source cfg4dev.sh
-    ```
-
-    `jetstream sync: wrote ...` lists the files it changed, and `jetstream --version` shows the new release.
-
-1. **Commit and push** the changes, including any new files the release adds:
-
-    ```bash
-    git add -A
-    git commit -m "chore: jetstream sync for vX.Y.Z"
-    git push
-    ```
-
-1. **Review the sync commit**: its diff is what the release actually changes in this repo. Merge once `jetstream lint` passes, then clean up as above.
-
-Once you've pushed to its branch, Dependabot stops updating the pull request. If `main` moves on before you merge, update the branch (`gh pr update-branch`), and run `jetstream check` again.
+To take a release before the workflow next runs, run it by hand: `gh workflow run jetstream-update.yaml`.

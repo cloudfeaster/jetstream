@@ -665,6 +665,85 @@ def test_sync_dependabot_alerts_changes_nothing_when_they_match(repo: Path, syst
     assert len(log.read_text().splitlines()) == 1
 
 
+# --- update-jetstream
+
+
+def fake_gh_answering(tmp_path: Path, answers: dict[str, str]) -> tuple[Path, Path]:
+    """Return a folder holding a fake gh, which logs every call and prints the answer for the first part of ``answers`` its arguments contain, and its log."""
+    folder: Path = tmp_path / "fake-gh"
+    folder.mkdir()
+    log: Path = tmp_path / "gh.log"
+    log.touch()
+    cases: str = "".join(f'    *"{part}"*) printf "%s\\n" "{answer}" ;;\n' for part, answer in answers.items())
+    gh: Path = folder / "gh"
+    gh.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{log}"\ncase "$*" in\n{cases}esac\n')
+    gh.chmod(0o755)
+    return folder, log
+
+
+def jetstream_releases(tmp_path: Path, *tags: str) -> Path:
+    """Return a git repo standing in for jetstream's, with ``tags``."""
+    releases: Path = tmp_path / "jetstream"
+    releases.mkdir()
+    git(releases, "init", "--quiet")
+    git(releases, "-c", "user.name=R", "-c", "user.email=r@example.com", "-c", "commit.gpgsign=false", "commit", "--quiet", "--allow-empty", "-m", "release")
+    for tag in tags:
+        git(releases, "tag", tag)
+    return releases
+
+
+def pin_jetstream(repo: Path, releases: Path, tag: str) -> None:
+    """Pin ``repo``'s jetstream to ``tag`` of ``releases``, and commit it."""
+    add(repo, {"pyproject.toml": f'[tool.uv.sources]\ncloudfeaster-jetstream = {{ git = "{releases}", tag = "{tag}" }}\n'})
+    git(repo, "commit", "--quiet", "-m", "pin")
+
+
+def test_update_jetstream_does_nothing_without_a_release_pin(repo: Path, system_path: str, tmp_path: Path) -> None:
+    """A repo with no tag pin, such as jetstream itself, has nothing to update, and gh isn't called."""
+    gh_folder: Path
+    log: Path
+    gh_folder, log = fake_gh_answering(tmp_path, {})
+    add(repo, {"pyproject.toml": "[project]\nname = 'x'\n"})
+    result: subprocess.CompletedProcess[str] = run_script(f"{gh_folder}:{system_path}", repo, "run-update-jetstream.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "nothing to update" in result.stdout
+    assert not log.read_text()
+
+
+def test_update_jetstream_closes_its_pull_request_once_the_pin_is_up_to_date(repo: Path, system_path: str, tmp_path: Path) -> None:
+    """With the latest release pinned, an open update pull request is closed, with a comment."""
+    pin_jetstream(repo, jetstream_releases(tmp_path, "v0.1.0", "v0.2.0"), "v0.2.0")
+    gh_folder: Path
+    log: Path
+    gh_folder, log = fake_gh_answering(tmp_path, {"pulls?state=open": "7\tbuild(deps): update jetstream from v0.1.0 to v0.2.0"})
+    result: subprocess.CompletedProcess[str] = run_script(f"{gh_folder}:{system_path}", repo, "run-update-jetstream.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "update: closing #7" in result.stdout
+    calls: list[str] = log.read_text().splitlines()
+    assert calls[1].startswith("api --silent -X POST repos/{owner}/{repo}/issues/7/comments")
+    assert calls[2] == "api --silent -X PATCH repos/{owner}/{repo}/pulls/7 -f state=closed"
+
+
+def test_update_jetstream_leaves_a_pull_request_that_is_already_up_to_date(repo: Path, system_path: str, tmp_path: Path) -> None:
+    """An open pull request for the latest release, on the commit checked out, is left as it is."""
+    pin_jetstream(repo, jetstream_releases(tmp_path, "v0.1.0", "v0.10.0", "v0.9.0"), "v0.1.0")
+    head: str = git(repo, "rev-parse", "HEAD").strip()
+    gh_folder: Path
+    log: Path
+    gh_folder, log = fake_gh_answering(
+        tmp_path,
+        {"pulls?state=open": "7\tbuild(deps): update jetstream from v0.1.0 to v0.10.0", "commits/jetstream/update": head},
+    )
+    result: subprocess.CompletedProcess[str] = run_script(f"{gh_folder}:{system_path}", repo, "run-update-jetstream.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "update: #7 already updates jetstream to v0.10.0" in result.stdout
+    assert log.read_text().splitlines() == [
+        'api repos/{owner}/{repo}/pulls?state=open&head={owner}:jetstream/update --jq .[] | "\\(.number)\\t\\(.title)"',
+        "api repos/{owner}/{repo}/commits/jetstream/update --jq .parents[0].sha",
+    ]
+    assert not git(repo, "status", "--porcelain")
+
+
 # --- unit-tests
 
 

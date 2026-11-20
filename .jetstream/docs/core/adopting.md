@@ -71,3 +71,5 @@ How to bring an existing repo onto jetstream. A new repo starts on it. The org h
     From then on the org's `default branch: jetstream lint` ruleset requires `jetstream lint` on the repo's default branch ([org-setup.md](org-setup.md)). Mark it only once jetstream is merged: until the workflow is on the default branch, a required check that never runs would block every pull request, the one that adopts jetstream included.
 
 1. **Set up the Dependabot alert sync** for the repo: [dependabot-alerts.md](dependabot-alerts.md), "Adding a repo".
+
+1. **Set up jetstream updates** for the repo: [jetstream-update.md](jetstream-update.md), "Adding a repo".
