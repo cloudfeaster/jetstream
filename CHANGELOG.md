@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/cloudfeaster/jetstream/compare/v0.5.0...v0.6.0) (2026-11-20)
+
+
+### Features
+
+* update jetstream with a scheduled workflow, not Dependabot ([#55](https://github.com/cloudfeaster/jetstream/issues/55)) ([ef3a3d4](https://github.com/cloudfeaster/jetstream/commit/ef3a3d4ea9e267c5e422bf742f1cbe2d121da4f1))
+
 ## [0.5.0](https://github.com/cloudfeaster/jetstream/compare/v0.4.0...v0.5.0) (2026-11-20)
 
 
