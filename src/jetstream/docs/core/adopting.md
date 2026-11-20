@@ -1,6 +1,6 @@
 # Adopting jetstream
 
-How to bring an existing repo onto jetstream. A new repo starts on it.
+How to bring an existing repo onto jetstream. A new repo starts on it. The org has to be set up for jetstream first, once ([org-setup.md](org-setup.md)).
 
 1. **Branch** from `main` ([dev-workflow.md](dev-workflow.md)).
 
@@ -58,4 +58,14 @@ How to bring an existing repo onto jetstream. A new repo starts on it.
     @.jetstream/docs/core/dev-workflow.md
     ```
 
-1. **Commit, open a pull request, and merge** once `jetstream lint` passes. The org ruleset requires `jetstream lint`, so a repo can't merge any pull request until it has adopted jetstream.
+1. **Commit, open a pull request, and merge** once `jetstream lint` passes.
+
+1. **Mark the repo as using jetstream.** An org owner sets the repo's `jetstream` custom property to `true`, in the org's **Settings → Repository → Custom properties → Set values**, or:
+
+    ```bash
+    gh api -X PATCH orgs/<org>/properties/values --input - <<< '{"repository_names": ["<repo>"], "properties": [{"property_name": "jetstream", "value": "true"}]}'
+    ```
+
+    From then on the org's `default branch: jetstream lint` ruleset requires `jetstream lint` on the repo's default branch ([org-setup.md](org-setup.md)). Mark it only once jetstream is merged: until the workflow is on the default branch, a required check that never runs would block every pull request, the one that adopts jetstream included.
+
+1. **Set up the Dependabot alert sync** for the repo: [dependabot-alerts.md](dependabot-alerts.md), "Adding a repo".

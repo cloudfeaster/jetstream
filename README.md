@@ -68,6 +68,8 @@ source cfg4dev.sh
 
 uv is the only machine prerequisite (website repos also need Node).
 
+An org sets itself up for jetstream once, before its first repo adopts it ([org-setup.md](src/jetstream/docs/core/org-setup.md)), and each repo then follows [adopting.md](src/jetstream/docs/core/adopting.md).
+
 ## Working on jetstream
 
 ```bash
