@@ -1,0 +1,63 @@
+---
+# Written by `jetstream sync` (core pack); don't edit.
+#
+# Takes jetstream's latest release (run-update-jetstream.sh): every night, it
+# bumps the jetstream pin, runs jetstream sync, and opens the result as a pull
+# request on the jetstream/update branch. Dependabot doesn't update jetstream,
+# since it can't run jetstream sync. Pushes with GITHUB_TOKEN start no
+# workflows, so jetstream lint wouldn't run on the pull request: this runs as
+# the org's jetstream update App, whose private key only main can read;
+# .jetstream/docs/core/jetstream-update.md says how to set it up.
+name: jetstream update
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: jetstream update
+    runs-on: ubuntu-latest
+    # The App's private key is a secret of this environment, which only main
+    # can deploy to.
+    environment: jetstream-update
+    permissions:
+      contents: read
+    steps:
+      - name: Get a token for the jetstream update App
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
+        with:
+          client-id: ${{ vars.JETSTREAM_UPDATE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.JETSTREAM_UPDATE_APP_PRIVATE_KEY }}
+          # Only this repo, and only what the update needs, even if the App is given more.
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # The script commits through the API, not with git push.
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          # No Actions cache, as in jetstream-lint.yaml.
+          enable-cache: false
+
+      - name: Install jetstream and its tools
+        run: uv sync --locked
+
+      - name: Update jetstream
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: uv run --no-sync run-update-jetstream.sh

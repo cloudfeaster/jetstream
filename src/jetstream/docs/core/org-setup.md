@@ -65,3 +65,7 @@ If the org restricts which GitHub Actions can run (**Settings → Actions → Ge
 ## 4. Set up the Dependabot alert sync
 
 Create the GitHub App the `jetstream-sync-dependabot-alerts.yaml` workflow runs as, and give it the org variable it needs: [dependabot-alerts.md](dependabot-alerts.md), "Setting it up for an org".
+
+## 5. Set up jetstream updates
+
+Create the GitHub App the `jetstream-update.yaml` workflow runs as, which opens the pull request that takes each jetstream release, and give it the org variable it needs: [jetstream-update.md](jetstream-update.md), "Setting it up for an org".

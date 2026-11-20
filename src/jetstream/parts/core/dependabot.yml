@@ -2,8 +2,9 @@
 # Written by `jetstream sync` from the packs in [tool.jetstream]; don't edit.
 #
 # Each ecosystem is checked daily, waits 7 days after a release before
-# proposing it (except jetstream's own releases), and groups its updates into
-# one security PR and one version PR.
+# proposing it, and groups its updates into one security PR and one version
+# PR. jetstream itself is updated by jetstream-update.yaml, which also runs
+# jetstream sync.
 version: 2
 updates:
   - package-ecosystem: "uv"
@@ -12,8 +13,8 @@ updates:
       interval: "daily"
     cooldown:
       default-days: 7
-      exclude:
-        - "cloudfeaster-jetstream*"  # Dependabot names it with its extras, e.g. cloudfeaster-jetstream[core]
+    ignore:
+      - dependency-name: "cloudfeaster-jetstream*"  # Dependabot names it with its extras, e.g. cloudfeaster-jetstream[core]
     groups:
       security-updates:
         applies-to: security-updates
