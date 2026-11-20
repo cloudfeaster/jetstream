@@ -35,8 +35,8 @@ python = [
     "licensecheck==2026.0.8",
     "pip-audit==2.10.1",
     "pyscn==1.33.2",
-    "ruff==0.17.4",
-    "ty==0.0.101",
+    "ruff==0.17.5",
+    "ty==0.0.103",
 ]
 website = []
 
