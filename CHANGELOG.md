@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0](https://github.com/cloudfeaster/jetstream/compare/v0.4.0...v0.5.0) (2026-11-20)
+
+
+### Features
+
+* add bandit, deptry and pyscn to the python pack ([#42](https://github.com/cloudfeaster/jetstream/issues/42)) ([ebf063c](https://github.com/cloudfeaster/jetstream/commit/ebf063ceda30b7c500c01b527ad5a91935253654))
+* add pip-audit and licensecheck to the python pack ([#45](https://github.com/cloudfeaster/jetstream/issues/45)) ([15267f9](https://github.com/cloudfeaster/jetstream/commit/15267f99febca01ac84c9ee506bd5449a3560ecc))
+* add the python pack's part of the patch-vuln skill ([#48](https://github.com/cloudfeaster/jetstream/issues/48)) ([bdd2d13](https://github.com/cloudfeaster/jetstream/commit/bdd2d133315e4cb5efcab705dbfe8baff6852baa))
+* measure coverage in the unit-tests hook for the python pack ([#44](https://github.com/cloudfeaster/jetstream/issues/44)) ([08287b3](https://github.com/cloudfeaster/jetstream/commit/08287b3121efc63506dee2c898b7db3eeb3fde94))
+* prune redundant [tool.uv] constraints and cooldown overrides ([#50](https://github.com/cloudfeaster/jetstream/issues/50)) ([a79054d](https://github.com/cloudfeaster/jetstream/commit/a79054df7eeeb5b8a5a6389393272b1adc30326c))
+* prune scan exceptions that no longer match a finding ([#51](https://github.com/cloudfeaster/jetstream/issues/51)) ([cfb54bf](https://github.com/cloudfeaster/jetstream/commit/cfb54bf89faa803b6425e2c03be872d67f9100f0))
+* run integration tests in CI, and build python-pack packages ([#49](https://github.com/cloudfeaster/jetstream/issues/49)) ([270dcc4](https://github.com/cloudfeaster/jetstream/commit/270dcc44219bf18d4df4922abd30dcbdb5ba0f8a))
+* sync Dependabot alerts with the scanners' exceptions ([#52](https://github.com/cloudfeaster/jetstream/issues/52)) ([c60be1b](https://github.com/cloudfeaster/jetstream/commit/c60be1be59f8bb9bdb1842ae0e7b26ba690fa610))
+
+
+### Documentation
+
+* say how an org and a repo set up for jetstream ([#53](https://github.com/cloudfeaster/jetstream/issues/53)) ([c42946d](https://github.com/cloudfeaster/jetstream/commit/c42946defff29830321520e7a17f5d8c8653d20f))
+
 ## [0.4.0](https://github.com/cloudfeaster/jetstream/compare/v0.3.0...v0.4.0) (2026-11-18)
 
 
