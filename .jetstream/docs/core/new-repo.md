@@ -4,7 +4,7 @@
 
 A new repo starts on jetstream with `jetstream new-repo`, which writes the repo's first files. An existing repo adopts it instead ([adopting.md](adopting.md)). The org has to be set up for jetstream first, once ([org-setup.md](org-setup.md)).
 
-In Claude Code, `/jetstream-new-repo` does steps 1 to 5, then lists step 6.
+In Claude Code, `/jetstream-new-repo` does steps 1 to 6, then lists step 7.
 
 1. **Create the repo and clone it.** Make it private unless it's meant to be public:
 
@@ -13,13 +13,22 @@ In Claude Code, `/jetstream-new-repo` does steps 1 to 5, then lists step 6.
     cd <repo>
     ```
 
-1. **Start `main`** with an empty commit, so the default branch exists before any work. The org's rulesets then apply to it:
+1. **Start `main`** with an empty commit, so the default branch exists before any work. The org's rulesets then apply to it. A clone of an empty repo names its branch after git's `init.defaultBranch`, so name it `main` before pushing:
 
     ```bash
     git commit --allow-empty -m "chore: start the repo"
+    git branch -M main
     git push -u origin main
     git switch -c feat/start-on-jetstream
     ```
+
+1. **Mark the repo as using jetstream.** An org owner sets its `jetstream` custom property to `true` ([org-setup.md](org-setup.md)), so the org's `default branch: jetstream lint` ruleset requires `jetstream lint` from the first pull request on:
+
+    ```bash
+    gh api -X PATCH orgs/<org>/properties/values --input - <<< '{"repository_names": ["<repo>"], "properties": [{"property_name": "jetstream", "value": "true"}]}'
+    ```
+
+    A new repo can be marked straight away, unlike one adopting jetstream ([adopting.md](adopting.md)): its first pull request adds `jetstream-lint.yaml`, and a pull request runs the workflows in its own changes, so the required check runs on it.
 
 1. **Write the first files.** The repo has no `.venv` yet, so run jetstream's latest release with `uvx`:
 
@@ -47,4 +56,4 @@ In Claude Code, `/jetstream-new-repo` does steps 1 to 5, then lists step 6.
     gh pr create --fill
     ```
 
-1. **An org owner finishes the setup**, once it merges, with the last three steps of [adopting.md](adopting.md): the repo's `jetstream` custom property, its Dependabot alert sync, and its jetstream updates.
+1. **An org owner finishes the setup**, once it merges, with the last two steps of [adopting.md](adopting.md): the repo's Dependabot alert sync, and its jetstream updates.
