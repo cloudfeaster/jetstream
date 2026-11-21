@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/cloudfeaster/jetstream/compare/v0.6.0...v0.7.0) (2026-11-21)
+
+
+### Features
+
+* document the python pack's conventions, and allow tests beside the code ([#58](https://github.com/cloudfeaster/jetstream/issues/58)) ([716646e](https://github.com/cloudfeaster/jetstream/commit/716646e2bbd65fc693d0d1c253add0bd42a206df))
+
 ## [0.6.0](https://github.com/cloudfeaster/jetstream/compare/v0.5.0...v0.6.0) (2026-11-20)
 
 
