@@ -1,0 +1,8 @@
+# Temporary exceptions for pip-audit findings in this repo's own dependencies.
+# Findings in jetstream's tools are excepted in jetstream's
+# .jetstream/pip-audit-ignore, in a jetstream release, never here
+# (.jetstream/docs/python/python.md, "pip-audit's exceptions").
+#
+# One line per vulnerability, expiring 7 days out, so it's reviewed again:
+#
+#   CVE-2026-12345 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-day cooldown

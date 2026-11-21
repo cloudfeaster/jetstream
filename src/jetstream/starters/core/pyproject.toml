@@ -1,0 +1,17 @@
+[project]
+name = "$name"
+version = "0.0.0"
+description = "$description"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "cloudfeaster-jetstream[$extras]",
+]
+
+[tool.uv.sources]
+# Pinned to a release tag, which the jetstream-update workflow bumps.
+cloudfeaster-jetstream = { git = "https://github.com/cloudfeaster/jetstream", tag = "$tag" }
+
+[tool.jetstream]
+packs = [$packs]
