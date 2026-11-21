@@ -23,4 +23,10 @@ trap 'rm -rf "${tmp}"' EXIT
 requirements="${tmp}/requirements.txt"
 uv export --quiet --frozen --no-dev --no-emit-project --no-hashes > "${requirements}"
 
+# licensecheck fails when there's nothing to check, as in a new repo with no
+# product dependencies yet, whose export is only uv's comment header.
+if ! grep --quiet --invert-match '^#' "${requirements}"; then
+    exit 0
+fi
+
 licensecheck --requirements-paths "${requirements}" --show-only-failing --zero

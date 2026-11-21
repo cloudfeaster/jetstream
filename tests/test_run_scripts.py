@@ -461,9 +461,10 @@ def test_trivy_reads_jetstreams_and_the_repos_exceptions(repo: Path, run: Run) -
 # --- pip-audit and licensecheck
 
 
-def lock(repo: Path, dependency: str) -> None:
-    """Give ``repo`` a project depending on ``dependency``, with its uv.lock, and stage them."""
-    add(repo, {"pyproject.toml": PYTHON_PYPROJECT + f'\n[project]\nname = "a"\nversion = "0"\nrequires-python = "==3.13.*"\ndependencies = ["{dependency}"]\n'})
+def lock(repo: Path, *dependencies: str) -> None:
+    """Give ``repo`` a project depending on ``dependencies``, with its uv.lock, and stage them."""
+    listed: str = ", ".join(f'"{dependency}"' for dependency in dependencies)
+    add(repo, {"pyproject.toml": PYTHON_PYPROJECT + f'\n[project]\nname = "a"\nversion = "0"\nrequires-python = "==3.13.*"\ndependencies = [{listed}]\n'})
     uv: str | None = shutil.which("uv")
     assert uv is not None
     subprocess.run([uv, "lock", "--quiet"], cwd=repo, check=True)  # noqa: S603 (only the tests' own arguments)
@@ -499,6 +500,13 @@ def test_pip_audit_fails_a_malformed_exception(repo: Path, run: Run) -> None:
     result: subprocess.CompletedProcess[str] = run(repo, "run-pip-audit.sh")
     assert result.returncode != 0
     assert ".pip-audit-ignore: 'PYSEC-2026-1 2026-12-01': expected exp:YYYY-MM-DD" in result.stderr
+
+
+def test_licensecheck_passes_a_project_with_no_dependencies(repo: Path, run: Run) -> None:
+    """A project with no product dependencies yet, such as a new repo, has no licenses to check, so it passes."""
+    lock(repo)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-licensecheck.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 @pytest.mark.integration  # locks from PyPI, and looks up licenses
