@@ -2,7 +2,7 @@
 
 # Adopting jetstream
 
-How to bring an existing repo onto jetstream. A new repo starts on it. The org has to be set up for jetstream first, once ([org-setup.md](org-setup.md)).
+How to bring an existing repo onto jetstream. A new repo starts on it ([new-repo.md](new-repo.md)). The org has to be set up for jetstream first, once ([org-setup.md](org-setup.md)).
 
 1. **Branch** from `main` ([dev-workflow.md](dev-workflow.md)).
 
