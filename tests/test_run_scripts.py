@@ -46,6 +46,16 @@ SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
 )
 
 
+def test_installed_scripts_match_their_source() -> None:
+    """The scripts these tests run, in .venv/bin, are the ones in src/jetstream/bin: after editing one, `uv sync` installs it."""
+    stale: list[str] = []
+    for script in sorted((ROOT / "src" / "jetstream" / "bin").glob("*/*.sh")):
+        installed: Path = VENV_BIN / script.name
+        if not installed.is_file() or installed.read_bytes() != script.read_bytes():
+            stale.append(script.name)
+    assert not stale, f"run `uv sync`: .venv/bin has no copy, or an older copy, of {', '.join(stale)}, so the tests would check that, not your change"
+
+
 def git(repo: Path, *args: str) -> str:
     """Run git in ``repo`` and return its output."""
     result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the tests' own arguments)
