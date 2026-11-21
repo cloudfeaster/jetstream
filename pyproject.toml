@@ -147,7 +147,10 @@ skips = ["B101"]
 [tool.coverage.run]
 branch = true
 source = ["."]
-omit = ["tests/*"]
+omit = [
+    "tests/*",
+    "*/tests/*",
+]
 
 [tool.coverage.report]
 fail_under = 80

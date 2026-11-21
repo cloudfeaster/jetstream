@@ -8,13 +8,13 @@ The python pack is for a repo whose own code is Python. It adds these hooks to c
 |---|---|
 | `ruff` | `ruff check` (every rule, with a few left out) and `ruff format --check`, with jetstream's `[tool.ruff]` keys |
 | `ty` | types, with ty's default rules, using the repo's `.venv` for its dependencies |
-| `bandit` | security issues, with jetstream's `[tool.bandit]` keys; it leaves out `tests/`, which ruff's `S` rules (bandit's, ported) still check |
-| `deptry` | the dependencies in `pyproject.toml` against what the code imports: every import is declared, every dependency is used, and no dev dependency is imported; deptry's defaults leave out `tests/` |
+| `bandit` | security issues, with jetstream's `[tool.bandit]` keys; it leaves out every path with `tests` in it, which ruff's `S` rules (bandit's, ported) still check |
+| `deptry` | the dependencies in `pyproject.toml` against what the code imports: every import is declared, every dependency is used, and no dev dependency is imported; deptry's defaults leave out a top-level `tests/` (see [Tests](#tests) for tests beside the code) |
 | `pyscn` | a health score for complexity, dead code, clones, coupling and cohesion, which must be at least 90; `pyscn analyze --html .` shows the details |
 | `pip-audit` | no known vulnerabilities in any package in `uv.lock`, jetstream's tools included, like `trivy` but with PyPI's advisories; it runs at every commit, and every night in `jetstream-nightly-sca.yaml` |
 | `licensecheck` | the licenses of the product dependencies (`[project] dependencies`, and theirs) are ones [licensing.md](../core/licensing.md) allows, with jetstream's `[tool.licensecheck]` keys; dev dependencies, jetstream among them, are left out |
 
-The pack also installs coverage, and core's `unit-tests` hook then runs the tests under it: the hook fails if coverage is below 80% (branch coverage, of every `*.py` file except `tests/`, so a file no test imports counts as 0%). `.coverage` is left behind, so `coverage html` shows what's missed.
+The pack also installs coverage, and core's `unit-tests` hook then runs the tests under it: the hook fails if coverage is below 80% (branch coverage, of every `*.py` file except those in a `tests/` folder, so a file no test imports counts as 0%). `.coverage` is left behind, so `coverage html` shows what's missed.
 
 The pack's `jetstream-python-ci.yaml` workflow builds the sdist and wheel (`uv build`) on every pull request and push to `main`, to prove they still build. It keeps nothing: publishing a wheel needs a licensing review first ([licensing.md](../core/licensing.md)).
 
@@ -66,6 +66,84 @@ jetstream sets `[tool.licensecheck]`: `only_licenses` (MIT, Apache and BSD) and 
 ## deptry's configuration
 
 jetstream sets no deptry keys, so the repo sets `[tool.deptry]` itself when its layout needs it, for example `known_first_party = ["<package>"]` when its code is under `src/`. See [deptry's docs](https://deptry.com/usage/).
+
+## Dependencies
+
+- **Product dependencies** go in `[project] dependencies`, each pinned exactly (`"foo==1.2.3"`), with a comment saying what it's for. Dependabot then proposes every upgrade as a pull request, and `uv.lock` changes only when one merges.
+- **Development tools** go in `[dependency-groups] dev`, next to jetstream itself (`cloudfeaster-jetstream[core,python]`), and are pinned exactly too. A tool jetstream already installs isn't added again: it's already in `.venv/bin`.
+- **A transitive dependency** that must be newer than what's locked, for a vulnerability fix, gets a `[tool.uv] constraint-dependencies` floor, not a dependency of its own (see [pip-audit's exceptions](#pip-audits-exceptions) and [Pruning `[tool.uv]`](#pruning-tooluv)).
+- `[tool.uv] exclude-newer` keeps every new release out for 7 days, so a compromised one is usually pulled before it's locked. To let one package in sooner, add an `exclude-newer-package` override, which its prune workflow removes once it's redundant.
+
+deptry checks that the code imports every product dependency and no dev dependency.
+
+## Tests
+
+Tests are pytest functions, in either layout:
+
+- **a top-level `tests/`**: `tests/test_<module>.py` tests `<package>/<module>.py`;
+- **beside the code**: `<package>/tests/test_<module>.py` tests `<package>/<module>.py`, and imports it relatively (`from .. import <module>`). Each `tests/` folder needs an `__init__.py`.
+
+Coverage and bandit leave out both. deptry's defaults only leave out a top-level `tests/`, so a repo with tests beside its code adds:
+
+```toml
+[tool.deptry]
+extend_exclude = [".*/tests/"]
+```
+
+Conventions:
+
+- **Every test has a docstring** saying what it checks (ruff's `D103`). A fixture or helper's docstring starts with an imperative ("Return ...").
+- **Use `@pytest.mark.parametrize`** for cases of the same test, not a loop over a list: each case gets its own ID, and can fail and be run on its own.
+- **Shared fixtures** go in a `conftest.py`, at the root or in the `tests/` folder that uses them.
+- **Build test files from data**, not long string literals: write a `dict` with `yaml.dump()` or `json.dumps()`, so a case can change one value. A test of a parse error is the exception.
+- **A test that's slow or needs the network**, such as one that runs a real subprocess, is marked `@pytest.mark.integration` ([dev-environment.md](../core/dev-environment.md#the-checks)), or `pytestmark = pytest.mark.integration` for a whole module. The `unit-tests` hook leaves them out, so they don't count towards coverage.
+
+## Validating config with JSON Schema
+
+When code reads a YAML or JSON config file, validate it against a JSON Schema with the `jsonschema` package, rather than checking keys one at a time with `.get()`. A schema with `"additionalProperties": false` catches a misspelled key, which would otherwise be silently ignored.
+
+- Each schema is a `.json` file in a `jsonschemas/` folder beside the module that uses it, formatted as `jq` formats it ([json.md](../core/json.md)).
+- A `jsonschemas.py` module loads each one into a variable of the same name, one line per schema, so ty can see every name. Don't call it `jsonschema.py`: it would shadow the `jsonschema` package in a module that imports both.
+- The code catches `jsonschema.ValidationError` and raises a `ValueError` that names the file.
+- If a schema uses `format` (such as `"format": "regex"`), pass `format_checker=jsonschema.FormatChecker()`. Without it, `format` isn't checked.
+
+```python
+import json
+from pathlib import Path
+from typing import Any, Final
+
+
+def _load(name: str) -> dict[str, Any]:
+    """Return the schema in jsonschemas/<name>.json."""
+    return json.loads((Path(__file__).parent / "jsonschemas" / f"{name}.json").read_text())
+
+
+config: Final[dict[str, Any]] = _load("config")
+```
+
+```python
+import jsonschema
+
+from . import jsonschemas
+
+
+def validate_config(data: object, path: str) -> None:
+    """Raise ValueError if the config read from path doesn't match its schema."""
+    try:
+        jsonschema.validate(data, jsonschemas.config, format_checker=jsonschema.FormatChecker())
+    except jsonschema.ValidationError as exc:
+        msg: str = f"invalid config in {path}: {exc.message}"
+        raise ValueError(msg) from exc
+```
+
+## Installing from more than one index
+
+Most repos only use PyPI. One that also needs another package index (for a prebuilt wheel, say) should know that uv doesn't treat indexes the way pip does:
+
+- uv looks at every `--index` (or `[[tool.uv.index]]`) **before** the default index, and by default it stops at the first index that has the package at all, even if it only has an sdist there. Put the index that should win on `--index`, and keep `--default-index` for the fallback. The old names, `--extra-index-url` and `--index-url`, read the other way round.
+- Add `--only-binary <package>` (or `--no-build`) to an install that should get a wheel. Otherwise a mistake in which index wins can quietly build the package from source, which takes minutes, rather than failing in seconds.
+- `exclude-newer` applies to `uv pip install` too. An index that publishes no upload times (a plain list of files, not a PEP 700 index) has nothing uv can check against the cutoff, so nothing from it resolves, whatever the cutoff. The only way round it is `--no-config`, for a package pinned and reviewed some other way.
+- To find which CI step got slower, get each step's real times with `gh api repos/<owner>/<repo>/actions/jobs/<job-id> --jq '.steps[] | [.name, .started_at, .completed_at]'`, compare a slow run with a fast one, and read the slow step's whole log. A warm cache can hide a wrong resolution.
 
 ## Type annotations
 
