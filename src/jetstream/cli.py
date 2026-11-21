@@ -63,10 +63,10 @@ Next, in this repo:
   2. pre-commit run --all-files
   3. commit on a branch and open a pull request (.jetstream/docs/core/dev-workflow.md)
 
-An org owner (.jetstream/docs/core/new-repo.md):
-  - sets the repo's jetstream custom property to true, before that pull request merges, if it isn't already
-  - once it merges, sets up its Dependabot alert sync (.jetstream/docs/core/dependabot-alerts.md, "Adding a repo")
-  - and its jetstream updates (.jetstream/docs/core/jetstream-update.md, "Adding a repo")
+Before that pull request merges, an org owner, unless it's done (.jetstream/docs/core/new-repo.md):
+  - sets the repo's jetstream custom property to true
+  - sets up its Dependabot alert sync (.jetstream/docs/core/dependabot-alerts.md, "Adding a repo")
+  - sets up its jetstream updates (.jetstream/docs/core/jetstream-update.md, "Adding a repo")
 """
 
 

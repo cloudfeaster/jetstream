@@ -1,6 +1,6 @@
 ---
 name: jetstream-new-repo
-description: Create a new GitHub repo that starts on jetstream, the way .jetstream/docs/core/new-repo.md says - create and clone it, start main, mark it as using jetstream, run `jetstream new-repo` with uvx, set up and check it, and open its first pull request, then list the steps only an org owner can do. Use when the user says things like "new repo", "create a repo for ...", "start a new project", or "new-repo <name>". Not for an existing repo, which adopts jetstream (.jetstream/docs/core/adopting.md).
+description: Create a new GitHub repo that starts on jetstream, the way .jetstream/docs/core/new-repo.md says - create and clone it, start main, set it up for jetstream, run `jetstream new-repo` with uvx, set up and check it, and open its first pull request, then list the steps only an org owner can do. Use when the user says things like "new repo", "create a repo for ...", "start a new project", or "new-repo <name>". Not for an existing repo, which adopts jetstream (.jetstream/docs/core/adopting.md).
 ---
 
 # Start a new repo
@@ -23,7 +23,7 @@ Then check that `gh` is logged in as an org owner (`gh api orgs/<org>/membership
 `gh` must be logged in as an account that can create repos in the org (`gh auth status`).
 
 ```bash
-gh repo create <org>/<repo> --private --description "<description>" --clone
+gh repo create <org>/<repo> --private --disable-wiki --description "<description>" --clone
 cd <repo>
 git commit --allow-empty -m "chore: start the repo"
 git branch -M main  # a clone of an empty repo names its branch after git's init.defaultBranch
@@ -31,17 +31,21 @@ git push -u origin main
 git switch -c feat/start-on-jetstream
 ```
 
-Use `--public` instead of `--private` if the user chose a public repo. Commits must be signed: if the commit can't be signed, stop and tell the user, and never use `--no-gpg-sign`. If the push to `main` is rejected, stop and show the user the error.
+Use `--public` instead of `--private` if the user chose a public repo. Keep `--disable-wiki`: the org's repos have no wiki. Commits must be signed: if the commit can't be signed, stop and tell the user, and never use `--no-gpg-sign`. If the push to `main` is rejected, stop and show the user the error.
 
-## 3. Mark the repo as using jetstream
+## 3. Set the repo up for jetstream
 
-As an org owner, set the repo's `jetstream` custom property to `true`, so `jetstream lint` is required from the first pull request on. The first pull request adds `jetstream-lint.yaml`, so the check runs on it:
+`.jetstream/docs/core/new-repo.md` step 3, as an org owner. A repo marked as using jetstream is expected to have all three of these, so do them together.
 
-```bash
-gh api -X PATCH orgs/<org>/properties/values --input - <<< '{"repository_names": ["<repo>"], "properties": [{"property_name": "jetstream", "value": "true"}]}'
-```
+1. **Mark it as using jetstream:** set its `jetstream` custom property to `true`, so `jetstream lint` is required from the first pull request on. The first pull request adds `jetstream-lint.yaml`, so the check runs on it:
 
-If `gh` isn't an owner's, or the call fails, don't stop: tell the user an owner must set it before the first pull request merges.
+    ```bash
+    gh api -X PATCH orgs/<org>/properties/values --input - <<< '{"repository_names": ["<repo>"], "properties": [{"property_name": "jetstream", "value": "true"}]}'
+    ```
+
+1. **The Dependabot alert sync** (`dependabot-alerts.md`, "Adding a repo") **and the jetstream updates** (`jetstream-update.md`, "Adding a repo") each need the user to add the repo to an App's installation and generate the App a key, in the browser. Ask them to do both, and to tell you where each `.pem` file was downloaded. Then create each environment and store its key with the commands in those sections, and delete the downloads.
+
+If `gh` isn't an owner's, a call fails, or the user would rather do it later, don't stop: tell them an owner must do all three before the first pull request merges.
 
 ## 4. Write the first files
 
@@ -74,10 +78,9 @@ gh pr create --title "feat: start on jetstream" --body "The repo's first files, 
 
 Wait for `jetstream lint` (`gh pr checks --watch`), and report the pull request's URL. Don't merge it: the user decides (see `jetstream-ship`).
 
-## 7. List what an org owner does next
+## 7. List what's left
 
 List these for the user, with links to the docs:
 
-1. if step 3 didn't set it, set the repo's `jetstream` custom property to `true`, before the first pull request merges;
-1. once it merges, set up its Dependabot alert sync (`dependabot-alerts.md`, "Adding a repo");
-1. and its jetstream updates (`jetstream-update.md`, "Adding a repo").
+1. anything in step 3 that wasn't done, for an org owner to do before the first pull request merges;
+1. once it merges, test the alert sync and the updates by running each workflow by hand on `main` (their "Adding a repo" sections).
