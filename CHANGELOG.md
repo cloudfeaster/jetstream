@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/cloudfeaster/jetstream/compare/v0.7.0...v0.8.0) (2026-11-21)
+
+
+### Features
+
+* add jetstream new-repo, and the jetstream-new-repo skill ([#60](https://github.com/cloudfeaster/jetstream/issues/60)) ([c9e8cc7](https://github.com/cloudfeaster/jetstream/commit/c9e8cc70a644eabb6b9142d9cbe5e1108a356692))
+
 ## [0.7.0](https://github.com/cloudfeaster/jetstream/compare/v0.6.0...v0.7.0) (2026-11-21)
 
 
