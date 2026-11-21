@@ -42,12 +42,13 @@ skips = [
 ]
 
 # coverage (core's run-unit-tests.sh runs the tests under coverage when the
-# python pack installs it). Every *.py file in the repo except the tests, so
-# a file no test imports counts as 0%.
+# python pack installs it). Every *.py file in the repo except the tests (in
+# a top-level tests/, or a tests/ beside the code), so a file no test imports
+# counts as 0%.
 [tool.coverage.run]
 branch = true
 source = ["."]
-omit = ["tests/*"]
+omit = ["tests/*", "*/tests/*"]
 
 [tool.coverage.report]
 fail_under = 80
