@@ -42,7 +42,7 @@ def test_core_repo_is_not_a_package_and_pins_this_release(empty: Path) -> None:
     assert config["project"]["description"] == DESCRIPTION
     assert config["dependency-groups"]["dev"] == ["cloudfeaster-jetstream[core]"]
     assert config["tool"]["uv"]["package"] is False
-    assert config["tool"]["uv"]["sources"]["cloudfeaster-jetstream"] == {"git": new_repo.JETSTREAM_GIT, "tag": f"v{version('cloudfeaster-jetstream')}"}
+    assert config["tool"]["uv"]["sources"]["cloudfeaster-jetstream"] == {"git": "https://github.com/cloudfeaster/jetstream", "tag": f"v{version('cloudfeaster-jetstream')}"}
     assert config["tool"]["jetstream"]["packs"] == ["core"]
     assert "build-system" not in config
     assert not (empty / ".pip-audit-ignore").exists()
@@ -53,20 +53,29 @@ def test_python_repo_is_a_package(empty: Path) -> None:
     """A python repo builds a package with hatchling, and gets a .pip-audit-ignore starter."""
     new_repo.new_repo(empty, DESCRIPTION, ("python",), name="My.Repo")
     config: dict[str, Any] = pyproject_of(empty)
-    assert config["build-system"] == {"requires": [new_repo.HATCHLING], "build-backend": "hatchling.build"}
-    assert config["project"]["urls"] == {"Repository": f"{new_repo.ORG_URL}/My.Repo"}
+    assert config["build-system"]["build-backend"] == "hatchling.build"
+    assert config["project"]["urls"] == {"Repository": "https://github.com/cloudfeaster/My.Repo"}
     assert config["dependency-groups"]["dev"] == ["cloudfeaster-jetstream[core,python]"]
     assert config["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"] == ["my_repo"]
     assert "package" not in config["tool"]["uv"]
     assert config["tool"]["jetstream"]["packs"] == ["core", "python"]
     assert (empty / "my_repo" / "__init__.py").read_text().startswith('"""')
     assert (empty / ".pip-audit-ignore").read_text().startswith("# ")
+    assert "- [python.md](.jetstream/docs/python/python.md): Python\n" in (empty / "CONTRIBUTING.md").read_text()
 
 
 def test_hatchling_pin_matches_jetstreams_own() -> None:
     """A new python repo starts on the hatchling jetstream itself builds with."""
-    config: dict[str, Any] = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    assert config["build-system"]["requires"] == [new_repo.HATCHLING]
+    starter: dict[str, Any] = tomllib.loads((ROOT / "src" / "jetstream" / "starters" / "python" / "pyproject.toml").read_text())
+    own: dict[str, Any] = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    assert starter["build-system"] == own["build-system"]
+
+
+def test_starters_are_filled_in() -> None:
+    """Every placeholder in the starters, paths included, is filled in."""
+    files: dict[str, str] = new_repo.starter_files("a-repo", DESCRIPTION, ("core", "python"))
+    assert "a_repo/__init__.py" in files
+    assert all("$" not in path + text for path, text in files.items())
 
 
 def test_claude_md_imports_the_docs_for_working_in_the_repo() -> None:
