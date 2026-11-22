@@ -1,0 +1,10 @@
+---
+# jetstream's CodeRabbit config (public pack), written by `jetstream sync`.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Keys: https://docs.coderabbit.ai/reference/configuration
+language: en-CA
+early_access: false
+enable_free_tier: true
+reviews:
+  profile: chill
+  high_level_summary: true

@@ -99,8 +99,8 @@ def test_read_packs_rejects_bad_packs(repo: Path, packs: str | None, message: st
 
 def test_read_packs_puts_packs_in_order(repo: Path) -> None:
     """Packs come back in PACKS order, whatever order the repo lists them in."""
-    (repo / "pyproject.toml").write_text(PYPROJECT.replace('["core"]', '["website", "core", "python"]'))
-    assert sync.read_packs(repo) == ("core", "python", "website")
+    (repo / "pyproject.toml").write_text(PYPROJECT.replace('["core"]', '["public", "website", "core", "python"]'))
+    assert sync.read_packs(repo) == ("core", "python", "website", "public")
 
 
 def test_read_packs_needs_a_pyproject(tmp_path: Path) -> None:
@@ -146,6 +146,18 @@ def test_core_owns_its_files() -> None:
     assert want.gitignore_block.startswith(sync.GITIGNORE_START + "\n")
     assert want.gitignore_block.endswith(sync.GITIGNORE_END + "\n")
     assert want.pyproject_keys[("tool", "uv", "exclude-newer")] == "7 days"
+
+
+# --- what the public pack adds
+
+
+def test_public_pack_adds_coderabbit_config() -> None:
+    """The public pack writes .coderabbit.yaml and its doc, and core alone doesn't."""
+    want: sync.Expected = sync.expected(("core", "public"))
+    assert set(want.files) - set(sync.expected(("core",)).files) == {".coderabbit.yaml", ".jetstream/docs/public/coderabbit.md"}
+    config: dict[str, Any] = yaml.safe_load(want.files[".coderabbit.yaml"].content)
+    assert config["language"] == "en-CA"
+    assert config["reviews"] == {"profile": "chill", "high_level_summary": True}
 
 
 # --- what the python pack adds

@@ -14,7 +14,7 @@ Ask for everything in one go, and confirm the answers before creating anything, 
 - **the org and the repo's name**;
 - **a one-line description**;
 - **what kind of repo it is**: core only (no Python code of its own), python (its own code is Python), or website. The website pack isn't ready yet: if they pick it, stop and say so;
-- **private or public**: default to private. Public and private repos get the same files today.
+- **private or public**: default to private. A public repo adds the public pack once it's started (step 7).
 
 Then check that `gh` is logged in as an org owner (`gh api orgs/<org>/memberships/$(gh api user --jq .login) --jq .role` says `admin`). If it isn't, say that an owner must do step 3, before the first pull request merges, and carry on.
 
@@ -83,4 +83,5 @@ Wait for `jetstream lint` (`gh pr checks --watch`), and report the pull request'
 List these for the user, with links to the docs:
 
 1. anything in step 3 that wasn't done, for an org owner to do before the first pull request merges;
-1. once it merges, test the alert sync and the updates by running each workflow by hand on `main` (their "Adding a repo" sections).
+1. once it merges, test the alert sync and the updates by running each workflow by hand on `main` (their "Adding a repo" sections);
+1. for a public repo, once it merges, add the public pack on a new branch (`jetstream new-repo` doesn't take it): add `"public"` to `[tool.jetstream] packs` and `public` to the extras on `cloudfeaster-jetstream` in `[dependency-groups] dev`, run `uv lock` and `jetstream sync`, and commit. The pack writes `.coderabbit.yaml` and `.jetstream/docs/public/coderabbit.md`.
