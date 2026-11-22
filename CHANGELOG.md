@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.11.0](https://github.com/cloudfeaster/jetstream/compare/v0.10.0...v0.11.0) (2026-11-22)
+
+
+### Features
+
+* add the website pack's skeleton ([#72](https://github.com/cloudfeaster/jetstream/issues/72)) ([4a6895d](https://github.com/cloudfeaster/jetstream/commit/4a6895d33d04b8dff0b3566ac99ca6aa0adda587))
+* check a site's links with lychee ([#74](https://github.com/cloudfeaster/jetstream/issues/74)) ([65f9a2c](https://github.com/cloudfeaster/jetstream/commit/65f9a2c37b16e71990811e7f4dcac00ff8624624))
+* work through CodeRabbit's review before shipping a public repo's change ([#78](https://github.com/cloudfeaster/jetstream/issues/78)) ([be4d74f](https://github.com/cloudfeaster/jetstream/commit/be4d74f3c46d34685d3667708ae0b22891599a1c))
+
+
+### Bug Fixes
+
+* keep Node on the version in .nvmrc, in jetstream and locally ([#77](https://github.com/cloudfeaster/jetstream/issues/77)) ([ac53442](https://github.com/cloudfeaster/jetstream/commit/ac53442132c9af63abec2af00ae3d643507ff27b))
+
+
+### Documentation
+
+* use an SVG for the README's hero logo ([#75](https://github.com/cloudfeaster/jetstream/issues/75)) ([146451f](https://github.com/cloudfeaster/jetstream/commit/146451f2addd58ce4f47068ccdab9ca5157af3ba))
+
 ## [0.10.0](https://github.com/cloudfeaster/jetstream/compare/v0.9.1...v0.10.0) (2026-11-22)
 
 
