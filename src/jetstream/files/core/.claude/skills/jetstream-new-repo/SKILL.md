@@ -14,7 +14,7 @@ Ask for everything in one go, and confirm the answers before creating anything, 
 - **the org and the repo's name**;
 - **a one-line description**;
 - **what kind of repo it is**: core only (no Python code of its own), python (its own code is Python), or website. The website pack isn't ready yet: if they pick it, stop and say so;
-- **private or public**: default to private. Public and private repos get the same files today.
+- **private or public**: default to private. A public repo adds the public pack once it's started (step 7).
 
 Then check that `gh` is logged in as an org owner (`gh api orgs/<org>/memberships/$(gh api user --jq .login) --jq .role` says `admin`). If it isn't, say that an owner must do step 3, before the first pull request merges, and carry on.
 
@@ -77,6 +77,10 @@ gh pr create --title "feat: start on jetstream" --body "The repo's first files, 
 ```
 
 Wait for `jetstream lint` (`gh pr checks --watch`), and report the pull request's URL. Don't merge it: the user decides (see `jetstream-ship`).
+
+## 7. A public repo: add the public pack
+
+For a public repo, once the first pull request has merged, add the public pack on a new branch, as `.jetstream/docs/public/coderabbit.md` says ("Adding the pack"): `jetstream new-repo` doesn't take it.
 
 ## 7. List what's left
 

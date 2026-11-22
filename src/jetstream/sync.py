@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
 
 # Every pack, in the order their parts are combined. core is required.
-PACKS: Final[tuple[str, ...]] = ("core", "python", "website")
+PACKS: Final[tuple[str, ...]] = ("core", "python", "website", "public")
 
 GITIGNORE_START: Final[str] = "# >>> jetstream: written by `jetstream sync`; the repo's own lines go outside this block"
 GITIGNORE_END: Final[str] = "# <<< jetstream"

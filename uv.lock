@@ -219,11 +219,11 @@ requires-dist = [
     { name = "yamllint", marker = "extra == 'core'", specifier = "==1.38.0" },
     { name = "zizmor", marker = "extra == 'core'", specifier = "==1.32.0" },
 ]
-provides-extras = ["core", "python", "website"]
+provides-extras = ["core", "python", "website", "public"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "cloudfeaster-jetstream", extras = ["core", "python"] },
+    { name = "cloudfeaster-jetstream", extras = ["core", "python", "public"] },
     { name = "hatchling", specifier = "==1.33.0" },
 ]
 
