@@ -173,6 +173,14 @@ def test_json_lint_fails(repo: Path, run: Run, content: str, message: str) -> No
     assert message in result.stderr
 
 
+def test_json_lint_checks_a_web_app_manifest(repo: Path, run: Run) -> None:
+    """A web app manifest (*.webmanifest) is JSON, so it's checked too."""
+    add(repo, {"public/manifest.webmanifest": '{"name": "Site"}\n'})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-json-lint.sh")
+    assert result.returncode == 1
+    assert "Unformatted JSON: public/manifest.webmanifest" in result.stderr
+
+
 def test_json_lint_skips_jsonlintignore_patterns(repo: Path, run: Run) -> None:
     """A JSONC file under .vscode, skipped by .jsonlintignore, passes."""
     add(repo, {".vscode/settings.json": '{\n  // a comment\n  "key": 1,\n}\n'})
@@ -912,6 +920,45 @@ def test_lychee_offline_skips_other_sites(repo: Path, run: Run) -> None:
     result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
     assert result.returncode == 0
     assert "1 Excluded" in result.stdout
+
+
+def write_manifest(repo: Path, path: str, manifest: dict[str, Any]) -> None:
+    """Write ``manifest`` into dist/ at ``path``, as a site's public/ would put it there."""
+    (repo / "dist" / path).parent.mkdir(parents=True, exist_ok=True)
+    (repo / "dist" / path).write_text(json.dumps(manifest))
+    (repo / "dist" / "icon.png").write_bytes(b"")
+
+
+@pytest.mark.parametrize(
+    ("config", "path", "manifest"),
+    [
+        ({"site": SITE, "base": "/docs"}, "manifest.webmanifest", {"start_url": "./", "scope": "./", "icons": [{"src": "icon.png"}], "shortcuts": [{"url": "about/", "icons": [{"src": "/docs/icon.png"}]}]}),
+        ({}, "manifest.webmanifest", {"start_url": "/", "icons": [{"src": "icon.png"}]}),
+        ({"site": SITE, "base": "/docs"}, "about/manifest.json", {"start_url": "../", "icons": [{"src": f"{SITE}/docs/icon.png"}, {"src": "https://www.iana.org/icon.png"}]}),
+    ],
+    ids=["base", "no-site-or-base", "manifest-json-in-a-folder"],
+)
+def test_lychee_passes_a_web_app_manifests_links(repo: Path, run: Run, config: dict[str, str], path: str, manifest: dict[str, Any]) -> None:
+    """The links in a web app manifest are resolved against the manifest's own URL, as a browser resolves them, and checked against dist/."""
+    build_site(repo, config, [])
+    write_manifest(repo, path, manifest)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [{"icons": [{"src": "icon-missing.png"}]}, {"start_url": "missing/"}, {"shortcuts": [{"url": "./", "icons": [{"src": "/icon.png"}]}]}],
+    ids=["missing-icon", "missing-start-url", "shortcut-icon-outside-the-base"],
+)
+def test_lychee_fails_a_broken_link_in_a_web_app_manifest(repo: Path, run: Run, manifest: dict[str, Any]) -> None:
+    """A link in a web app manifest to a file that isn't in dist/ fails, offline."""
+    build_site(repo, {"site": SITE, "base": "/docs"}, [])
+    write_manifest(repo, "manifest.webmanifest", manifest)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == LYCHEE_BROKEN_LINKS
+    assert "1 Error" in result.stdout
+    assert "manifest.webmanifest.html" in result.stdout
 
 
 @pytest.mark.parametrize(

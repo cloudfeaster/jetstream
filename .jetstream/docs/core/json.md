@@ -2,7 +2,7 @@
 
 # JSON
 
-The `json-lint` hook checks that every tracked `*.json` file is valid JSON and is formatted as `jq` formats it (2-space indent). To format a file:
+The `json-lint` hook checks that every tracked `*.json` file, and every `*.webmanifest` (a web app manifest, which is JSON), is valid JSON and is formatted as `jq` formats it (2-space indent). To format a file:
 
 ```bash
 jq . file.json > file.json.new && mv file.json.new file.json

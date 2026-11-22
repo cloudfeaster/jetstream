@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Fail if a tracked JSON file is invalid, or isn't formatted the way `jq .`
-# formats it. Files matching a pattern (git pathspec glob) in the repo's
+# Fail if a tracked JSON file (*.json, and *.webmanifest, a web app manifest)
+# is invalid, or isn't formatted the way `jq .` formats it. Files matching a pattern (git pathspec glob) in the repo's
 # .jsonlintignore are skipped, e.g. .vscode/* (VS Code settings are JSONC).
 
 set -euo pipefail
@@ -16,7 +16,7 @@ PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd):${PATH}"
 toplevel="$(git rev-parse --show-toplevel)"
 cd "${toplevel}"
 
-pathspecs=('*.json')
+pathspecs=('*.json' '*.webmanifest')
 if [[ -f .jsonlintignore ]]; then
     while IFS= read -r pattern; do
         case "${pattern}" in
