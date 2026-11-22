@@ -1,0 +1,18 @@
+# Licenses of the development tools jetstream installs that a package's own
+# metadata doesn't show (licensing.md, "Development tools").
+# tests/test_dev_tool_licenses.py reads every other license from the installed
+# packages' metadata, and the binaries' from binaries.toml.
+#
+# When a package is added to a pack's extra, check what its wheels contain,
+# and record anything bundled under another license here.
+
+# Software bundled inside a package, under its own license:
+# package = "SPDX license"  # what's bundled
+[bundled]
+shellcheck-py = "GPL-3.0-only"  # the ShellCheck binary in its wheels
+
+# A package whose metadata names no license licensecheck recognises, or an
+# AGPL one, once a review has found it allowed: package = "SPDX license"
+# with a comment saying why. An AGPL tool that serves anything over a network
+# needs that review before it's used.
+[reviewed]

@@ -3,7 +3,7 @@
 
     bin/update-binary.py TOOL VERSION   pin TOOL to VERSION
     bin/update-binary.py TOOL           pin TOOL to its latest release
-    bin/update-binary.py --check        fail if any pin is behind its latest release
+    bin/update-binary.py --check        fail if any pin is behind its latest release, or GitHub reports a different license
     bin/update-binary.py --check -v     ... and report every tool's pinned and latest versions
 
 A release is only used once it's at least 7 days old (the cooldown, as for
@@ -26,9 +26,12 @@ import urllib.error
 import urllib.request
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import tomlkit
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 PINS_PATH: Final[Path] = Path(__file__).resolve().parent.parent / "binaries.toml"
 COOLDOWN: Final[dt.timedelta] = dt.timedelta(days=7)
@@ -194,8 +197,17 @@ def update(pins: tomlkit.TOMLDocument, tool: str, version: str | None, now: dt.d
     return f"{tool}: {old_version} -> {version}"
 
 
+def license_change(tool: str, pin: Mapping[str, Any]) -> str | None:
+    """Return a line if GitHub reports a different license for ``tool``'s repo than its pin records."""
+    recorded: str = pin.get("github-license", pin["license"])
+    reported: str = (github_api(f"repos/{pin['repo']}").get("license") or {}).get("spdx_id") or "none"
+    if reported == recorded:
+        return None
+    return f"{tool}: GitHub reports the license {reported}, not {recorded}; review it, and update its license in {PINS_PATH.name}"
+
+
 def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False) -> list[str]:
-    """Return a line for each tool whose latest release past the cooldown isn't the pinned one, or that couldn't be checked.
+    """Return a line for each tool whose latest release past the cooldown isn't the pinned one, whose license changed, or that couldn't be checked.
 
     With ``verbose``, also print each tool's pinned and latest versions, and what that means.
     """
@@ -203,6 +215,7 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
     for tool, pin in pins.items():
         try:
             release: dict[str, Any] = github_api(f"repos/{pin['repo']}/releases/latest")
+            changed: str | None = license_change(tool, pin)
         except UpdateError as e:
             # Check the other tools anyway, so one failure doesn't hide what they'd report.
             stale.append(f"{tool}: couldn't check: {e}")
@@ -220,6 +233,8 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
             stale.append(
                 f"{tool} {pin['version']} is outdated: {latest} was released {released_at(release):%Y-%m-%d}; run bin/update-binary.py {tool}",
             )
+        if changed:
+            stale.append(changed)
         if verbose:
             sys.stdout.write(f"{tool}: pinned {pin['version']}; latest {latest} ({released_at(release):%Y-%m-%d}): {status}\n")
     return stale
@@ -228,7 +243,7 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
 def main(argv: list[str] | None = None) -> int:
     """Run the command line."""
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="fail if any pin is behind its latest release")
+    parser.add_argument("--check", action="store_true", help="fail if any pin is behind its latest release, or GitHub reports a different license")
     parser.add_argument("-v", "--verbose", action="store_true", help="with --check, report every tool, not just outdated ones")
     parser.add_argument("tool", nargs="?", help="the tool to update")
     parser.add_argument("version", nargs="?", help="the version to pin (default: the latest release)")

@@ -31,6 +31,7 @@ PINS: Final[str] = """\
 
 [tool]
 repo = "owner/tool"
+license = "MIT"
 version = "1.0.0"
 tag = "v{version}"
 asset = "tool-{version}-{platform}.tar.gz"
@@ -78,8 +79,8 @@ def downloads(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 
 @pytest.fixture
 def api(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """Return GitHub API responses by path, faked, with a 404 for any other path."""
-    responses: dict[str, Any] = {}
+    """Return GitHub API responses by path, faked, with a 404 for any other path; each test repo is MIT."""
+    responses: dict[str, Any] = {f"repos/owner/{repo}": {"license": {"spdx_id": "MIT"}} for repo in ("tool", "other")}
 
     def fake_github_api(path: str) -> dict[str, Any]:
         if path not in responses:
@@ -245,6 +246,26 @@ def test_check_reports_every_tool_even_when_one_fails(api: dict[str, Any], capsy
     problems: list[str] = update_binary.check(tomlkit.parse(pins), NOW, verbose=True)
     assert problems == ["tool: couldn't check: GitHub API repos/owner/tool/releases/latest: 404 Not Found"]
     assert capsys.readouterr().out == ("tool: couldn't check: GitHub API repos/owner/tool/releases/latest: 404 Not Found\nother: pinned 1.0.0; latest 1.0.0 (2026-10-18): up to date\n")
+
+
+@pytest.mark.parametrize(
+    ("reported", "github_license", "problem"),
+    [
+        ("MIT", None, None),
+        ("GPL-3.0", None, "tool: GitHub reports the license GPL-3.0, not MIT; review it, and update its license in binaries.toml"),
+        (None, None, "tool: GitHub reports the license none, not MIT; review it, and update its license in binaries.toml"),
+        ("NOASSERTION", "NOASSERTION", None),
+        ("MIT", "NOASSERTION", "tool: GitHub reports the license MIT, not NOASSERTION; review it, and update its license in binaries.toml"),
+    ],
+)
+def test_check_fails_when_the_license_changes(api: dict[str, Any], reported: str | None, github_license: str | None, problem: str | None) -> None:
+    """--check fails when GitHub's license for a tool's repo isn't the one recorded, or its github-license where GitHub can't tell."""
+    api["repos/owner/tool/releases/latest"] = release("1.0.0", 30)
+    api["repos/owner/tool"] = {"license": {"spdx_id": reported} if reported else None}
+    pins: tomlkit.TOMLDocument = tomlkit.parse(PINS)
+    if github_license:
+        pins["tool"]["github-license"] = github_license
+    assert update_binary.check(pins, NOW) == ([problem] if problem else [])
 
 
 def http_error(code: int, reason: str, body: bytes, headers: dict[str, str]) -> urllib.error.HTTPError:

@@ -10,9 +10,16 @@
 # (leave `member` out when the asset is the binary itself),
 # with {version} and {platform} filled in; `checksums` can also use {asset}. The [<tool>.platforms] keys are the
 # wheel platform tags in hatch_build.py's SUPPORTED_PLATFORMS.
+#
+# `license` is the tool's SPDX license, which licensing.md must allow for a
+# development tool (tests/test_dev_tool_licenses.py). `update-binary.py --check`
+# fails if GitHub reports a different license for the repo; where GitHub
+# can't tell (NOASSERTION), `github-license` records what it reports instead,
+# and `license` is what a review of the repo's license file found.
 
 [mado]
 repo = "akiomik/mado"
+license = "Apache-2.0"
 version = "0.4.0"
 tag = "v{version}"
 asset = "mado-{platform}.tar.gz"
@@ -26,6 +33,7 @@ macosx_11_0_arm64 = { platform = "macOS-arm64", sha256 = "8a646da7c4381580710594
 
 [d2]
 repo = "terrastruct/d2"
+license = "MPL-2.0"
 version = "0.9.0"
 tag = "v{version}"
 asset = "d2-v{version}-{platform}.tar.gz"
@@ -39,6 +47,7 @@ macosx_11_0_arm64 = { platform = "macos-arm64", sha256 = "eaf6c0c143e56dd9fa97bf
 
 [gitleaks]
 repo = "gitleaks/gitleaks"
+license = "MIT"
 version = "8.30.1"
 tag = "v{version}"
 asset = "gitleaks_{version}_{platform}.tar.gz"
@@ -52,6 +61,7 @@ macosx_11_0_arm64 = { platform = "darwin_arm64", sha256 = "b40ab0ae55c505963e365
 
 [trivy]
 repo = "aquasecurity/trivy"
+license = "Apache-2.0"
 version = "0.76.2"
 tag = "v{version}"
 asset = "trivy_{version}_{platform}.tar.gz"
@@ -65,6 +75,8 @@ macosx_11_0_arm64 = { platform = "macOS-ARM64", sha256 = "ae7ea358326960406b703c
 
 [jq]
 repo = "jqlang/jq"
+license = "MIT"
+github-license = "NOASSERTION"  # GitHub can't classify COPYING: MIT for jq, then notes on its docs and bundled code
 version = "1.8.2"
 tag = "jq-{version}"
 asset = "jq-{platform}"

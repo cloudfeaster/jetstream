@@ -46,6 +46,16 @@ It has a ceiling too. Dependabot runs `uv lock` with the uv in [dependabot-core'
 
 To change it, edit `required-version` in core's part, run `jetstream sync` (jetstream's own `pyproject.toml` has the same key) and `uv lock`, and commit it as a `fix:`, so it's released.
 
+## Licenses of the tools jetstream installs
+
+Every tool jetstream installs is a development tool, so it may have any open-source license except that an AGPL one needs a review first ([licensing.md](src/jetstream/docs/core/licensing.md#development-tools)). `tests/test_dev_tool_licenses.py` checks:
+
+- **every Python package** that a pack's extra installs, with its dependencies, using the license licensecheck reads from its installed metadata;
+- **every binary** in `binaries.toml`, by its `license`. The `binary pins` workflow's `bin/update-binary.py --check` fails if GitHub reports a different license for the tool's repo;
+- **what's bundled inside a package**, under a license of its own, which no metadata shows. It's recorded by hand in `dev-tool-licenses.toml`'s `[bundled]`, such as the GPL ShellCheck binary in `shellcheck-py`'s wheels.
+
+When you add a tool, check what its wheels contain and record anything bundled. A license the test can't recognise, a missing one, or an AGPL one fails until someone reviews it and records it in `[reviewed]`, with a comment saying why it's allowed.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please), from the Conventional Commits on `main`:

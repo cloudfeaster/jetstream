@@ -22,7 +22,7 @@ A tool used only to develop, test, lint, scan or build, locally or in CI, may ha
 
 Running such a tool on a repo's code doesn't change that code's license. An AGPL tool that serves anything over a network needs a review before it's used.
 
-jetstream's tools are development tools in this sense, because jetstream installs them without distributing them: see [How jetstream is distributed](https://github.com/cloudfeaster/jetstream#how-jetstream-is-distributed).
+jetstream's tools are development tools in this sense, because jetstream installs them without distributing them: see [How jetstream is distributed](https://github.com/cloudfeaster/jetstream#how-jetstream-is-distributed). jetstream's own tests check that every tool it installs, and anything bundled inside one, has a license this section allows, so a repo doesn't check them.
 
 ## Publishing
 
