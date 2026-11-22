@@ -847,6 +847,32 @@ def test_lychee_fails_a_broken_link(repo: Path, run: Run, link: str) -> None:
     assert "1 Error" in result.stdout
 
 
+@pytest.mark.parametrize("site", [f"{SITE}:443", "https://EXAMPLE.org/"], ids=["default-port", "upper-case-host"])
+def test_lychee_checks_the_sites_own_links_however_site_is_written(repo: Path, run: Run, site: str) -> None:
+    """The Astro config's site is compared as lychee writes URLs, so a broken absolute link to the site itself still fails offline rather than being skipped."""
+    build_site(repo, {"site": site, "base": "/docs"}, [f"{SITE}/docs/missing/"])
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == LYCHEE_BROKEN_LINKS
+    assert "1 Error" in result.stdout
+
+
+def test_lychee_reads_a_typescript_config_with_an_enum(repo: Path, run: Run) -> None:
+    """An astro.config.ts with TypeScript that type stripping can't handle, such as an enum, is still read."""
+    build_site(repo, {}, ["/docs/about/"])
+    (repo / "astro.config.mjs").unlink()
+    (repo / "astro.config.ts").write_text('enum Paths {\n    Docs = "/docs",\n}\n\nexport default { site: "https://example.org", base: Paths.Docs };\n')
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_lychee_offline_skips_a_scheme_relative_link_to_another_site(repo: Path, run: Run) -> None:
+    """A scheme-relative link (//host/path) is another site's, not a missing local file, so offline it's skipped."""
+    build_site(repo, {"site": SITE}, ["//www.iana.org/"])
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 Excluded" in result.stdout
+
+
 def test_lychee_offline_skips_other_sites(repo: Path, run: Run) -> None:
     """Without --external, a link to another site isn't checked (and the test makes no network request)."""
     build_site(repo, {}, ["https://www.iana.org/"])

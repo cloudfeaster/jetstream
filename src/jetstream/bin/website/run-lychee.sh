@@ -45,13 +45,15 @@ if [[ -z "${config}" ]]; then
     exit 1
 fi
 
-# "<site>\n<base>\n", each without its trailing slash, and base without its leading one
-site_and_base="$(node --input-type=module -e '
+# "<site>\n<base>\n": site as an origin, as lychee writes the URLs it parses
+# (https://example.org, with no default port or trailing slash), and base
+# without its leading and trailing slashes. --experimental-transform-types
+# compiles TypeScript that type stripping can't, such as an enum.
+site_and_base="$(node --experimental-transform-types --no-warnings --input-type=module -e '
 import { pathToFileURL } from "node:url";
 const config = (await import(pathToFileURL(process.argv[1]).href)).default;
-const trim = (value) => (value ?? "").replace(/^\/+|\/+$/g, "");
-console.log((config.site ?? "").replace(/\/+$/, ""));
-console.log(trim(config.base));
+console.log(config.site ? new URL(config.site).origin : "");
+console.log((config.base ?? "").replace(/^\/+|\/+$/g, ""));
 ' "${config}")"
 site="$(sed -n 1p <<< "${site_and_base}")"
 base="$(sed -n 2p <<< "${site_and_base}")"
@@ -72,8 +74,13 @@ remap=()
 if [[ -n "${site}" ]]; then
     # the site's own absolute links are checked against dist/, not the deployed site
     # (site is a scheme, host and port, so . is the only regex character in it)
-    remap=(--remap "^${site//./\\.}/ file://${root}/")
+    remap+=(--remap "^${site//./\\.}/ file://${root}/")
 fi
+# lychee resolves a scheme-relative link (//host/path) against the page's
+# file:// URL, giving file://host/path; the deployed site would use its own
+# scheme. A local file's URL has no host (file:///...), so it can't match.
+scheme="${site%%://*}"
+remap+=(--remap "^file://([^/]+)/ ${scheme:-https}://\$1/")
 
 lychee \
     --no-progress \
