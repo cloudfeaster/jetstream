@@ -78,13 +78,10 @@ gh pr create --title "feat: start on jetstream" --body "The repo's first files, 
 
 Wait for `jetstream lint` (`gh pr checks --watch`), and report the pull request's URL. Don't merge it: the user decides (see `jetstream-ship`).
 
-## 7. A public repo: add the public pack
-
-For a public repo, once the first pull request has merged, add the public pack on a new branch, as `.jetstream/docs/public/coderabbit.md` says ("Adding the pack"): `jetstream new-repo` doesn't take it.
-
 ## 7. List what's left
 
 List these for the user, with links to the docs:
 
 1. anything in step 3 that wasn't done, for an org owner to do before the first pull request merges;
-1. once it merges, test the alert sync and the updates by running each workflow by hand on `main` (their "Adding a repo" sections).
+1. once it merges, test the alert sync and the updates by running each workflow by hand on `main` (their "Adding a repo" sections);
+1. for a public repo, once it merges, add the public pack on a new branch, as `.jetstream/docs/public/coderabbit.md` says ("Adding the pack"): `jetstream new-repo` doesn't take it.
