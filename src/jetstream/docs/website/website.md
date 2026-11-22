@@ -7,6 +7,8 @@ The website pack is for a repo that's an [Astro](https://astro.build/) site. The
 - a `package.json` and a `package-lock.json`, with `astro`, `@astrojs/check` and `typescript` in `devDependencies`;
 - an `astro.config.mjs` (or `.ts`), with the site in `src/`.
 
+A package whose code ships to the browser, and so ends up in the built site, goes in `dependencies`. Everything that only builds or checks the site, Astro included, goes in `devDependencies`: under [licensing.md](../core/licensing.md), those are development tools, and the products are the `dependencies`.
+
 ## What the pack adds
 
 | File | What it does |
