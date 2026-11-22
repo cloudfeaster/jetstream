@@ -49,7 +49,8 @@ jobs:
         run: uv run --no-sync jetstream check
 
       # The website pack's hooks need Node and the site's npm packages; its
-      # .nvmrc says which Node.
+      # .nvmrc says which Node. (jetstream itself has an .nvmrc, for its
+      # tests of the website pack's scripts, but no npm packages.)
       - name: Install Node (website pack)
         if: ${{ hashFiles('.nvmrc') != '' }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
@@ -58,7 +59,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install the site's npm packages (website pack)
-        if: ${{ hashFiles('.nvmrc') != '' }}
+        if: ${{ hashFiles('.nvmrc') != '' && hashFiles('package-lock.json') != '' }}
         run: npm ci
 
       - name: pre-commit hooks

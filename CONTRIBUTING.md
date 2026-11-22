@@ -9,7 +9,7 @@ Thanks for helping. jetstream is installed by every Cloudfeaster repo, so change
 
 ## Development environment
 
-You need [uv](https://docs.astral.sh/uv/), and [Node](https://nodejs.org/) for the website pack's tests. Then:
+You need [uv](https://docs.astral.sh/uv/), and [Node](https://nodejs.org/) for the website pack's tests, at the major version in `.nvmrc`. That's the website pack's `.nvmrc` (a symlink to `src/jetstream/files/website/.nvmrc`), so jetstream's tests and CI use the Node the sites do. Then:
 
 ```bash
 source cfg4dev.sh
