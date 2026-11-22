@@ -39,8 +39,11 @@ SYSTEM_COMMANDS: Final[tuple[str, ...]] = (
     "git",
     "grep",
     "mkdir",
+    "ln",
     "mktemp",
+    "node",  # run-lychee.sh reads the site's Astro config
     "rm",
+    "rmdir",
     "sed",
     "uv",
 )
@@ -795,6 +798,87 @@ def test_astro_check_names_a_missing_package(repo: Path, run: Run, missing: str)
     result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh")
     assert result.returncode == 1
     assert f"{missing} isn't in node_modules" in result.stderr
+
+
+# --- lychee (website pack)
+
+BASE_PAGE: Final[str] = '<html lang="en"><head><title>Home</title></head><body><h1 id="top">Home</h1>{links}</body></html>'
+
+
+def build_site(repo: Path, config: dict[str, str], links: list[str]) -> None:
+    """Write an Astro config with ``config``'s keys, and a dist/ as astro build would, with ``links`` on its home page and an about page."""
+    (repo / "astro.config.mjs").write_text(f"export default {json.dumps(config)};\n")
+    page: str = BASE_PAGE.format(links="".join(f'<a href="{link}">link</a>' for link in links))
+    (repo / "dist" / "about").mkdir(parents=True)
+    (repo / "dist" / "index.html").write_text(page)
+    (repo / "dist" / "about" / "index.html").write_text('<html lang="en"><head><title>About</title></head><body><h1 id="team">About</h1></body></html>')
+
+
+SITE: Final[str] = "https://example.org"
+LYCHEE_BROKEN_LINKS: Final[int] = 2  # lychee's exit code when a link is broken
+
+
+@pytest.mark.parametrize(
+    ("config", "links"),
+    [
+        ({}, ["/about/", "/about/#team", "#top", "about/"]),
+        ({"site": SITE, "base": "/docs"}, ["/docs/about/", "/docs/about/#team", "#top", f"{SITE}/docs/about/"]),
+        ({"site": f"{SITE}/", "base": "/a/b/"}, ["/a/b/about/", f"{SITE}/a/b/about/#team"]),
+    ],
+    ids=["no-base", "base", "nested-base-with-slashes"],
+)
+def test_lychee_passes_the_sites_own_links(repo: Path, run: Run, config: dict[str, str], links: list[str]) -> None:
+    """Root-relative links under the site's base, and absolute links to the site itself, are checked against dist/."""
+    build_site(repo, config, links)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "link",
+    ["/docs/missing/", "/docs/about/#nowhere", "#nowhere", "/about/", f"{SITE}/docs/missing/"],
+    ids=["missing-page", "missing-fragment", "missing-local-fragment", "outside-the-base", "missing-absolute"],
+)
+def test_lychee_fails_a_broken_link(repo: Path, run: Run, link: str) -> None:
+    """A link to a page or #fragment that isn't in dist/ fails, offline."""
+    build_site(repo, {"site": SITE, "base": "/docs"}, [link])
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == LYCHEE_BROKEN_LINKS
+    assert "1 Error" in result.stdout
+
+
+def test_lychee_offline_skips_other_sites(repo: Path, run: Run) -> None:
+    """Without --external, a link to another site isn't checked (and the test makes no network request)."""
+    build_site(repo, {}, ["https://www.iana.org/"])
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0
+    assert "1 Excluded" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("setup", "message"),
+    [
+        ("no-dist", "no dist/: build the site first"),
+        ("no-config", "no astro.config.mjs"),
+    ],
+)
+def test_lychee_needs_a_built_site_and_its_config(repo: Path, run: Run, setup: str, message: str) -> None:
+    """Without dist/ or an Astro config, the script says what's missing."""
+    build_site(repo, {}, [])
+    if setup == "no-dist":
+        shutil.rmtree(repo / "dist")
+    else:
+        (repo / "astro.config.mjs").unlink()
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+def test_lychee_rejects_unknown_arguments(repo: Path, run: Run) -> None:
+    """Only --external is accepted."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh", "--offline")
+    assert result.returncode == 1
+    assert "usage: run-lychee.sh [--external]" in result.stderr
 
 
 # --- unit-tests

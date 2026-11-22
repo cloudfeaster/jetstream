@@ -15,7 +15,7 @@ from typing import Any, Final
 import pytest
 
 ROOT: Final[Path] = Path(__file__).parent.parent
-BINARIES: Final[set[str]] = {"mado", "d2", "gitleaks", "trivy", "jq"}
+BINARIES: Final[set[str]] = {"mado", "d2", "gitleaks", "trivy", "jq", "lychee"}
 SHA256_HEX_LENGTH: Final[int] = 64
 EXECUTABLE_MODE: Final[int] = 0o755
 
