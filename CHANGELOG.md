@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/cloudfeaster/jetstream/compare/v0.9.1...v0.10.0) (2026-11-22)
+
+
+### Features
+
+* skip CodeRabbit reviews of release-please PRs ([#70](https://github.com/cloudfeaster/jetstream/issues/70)) ([0a0d832](https://github.com/cloudfeaster/jetstream/commit/0a0d83247454a9df4660cb878bf7dd6fbb73c651))
+
 ## [0.9.1](https://github.com/cloudfeaster/jetstream/compare/v0.9.0...v0.9.1) (2026-11-22)
 
 
