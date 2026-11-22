@@ -1,0 +1,43 @@
+---
+# Written by `jetstream sync` (website pack); don't edit.
+#
+# Builds the site, to prove it still builds. astro check is a pre-commit
+# hook, so it runs in jetstream-lint.yaml.
+name: jetstream website CI
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # superseded PR runs are cancelled; runs on main always finish
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: jetstream website CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install the site's npm packages
+        run: npm ci
+
+      - name: Build the site
+        run: node_modules/.bin/astro build

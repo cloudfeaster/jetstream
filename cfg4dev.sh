@@ -33,6 +33,14 @@ if uv sync; then
     fi
     unset _jetstream_pyproject _jetstream_pyproject_synced
 
+    # the website pack: the site's npm packages, when package-lock.json is
+    # newer than what's installed (npm ci writes node_modules/.package-lock.json)
+    if [[ -f .nvmrc && -f package-lock.json ]]; then
+        if [[ ! package-lock.json -ot node_modules/.package-lock.json ]]; then
+            npm ci
+        fi
+    fi
+
     # the pre-commit hook
     pre-commit install
 

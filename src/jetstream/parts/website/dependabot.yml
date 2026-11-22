@@ -1,0 +1,21 @@
+---
+# The website pack's ecosystem. `jetstream sync` appends what follows the
+# marker to core's updates list; the lines above it make this file valid YAML.
+version: 2
+updates:
+  # >>> jetstream: appended
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
