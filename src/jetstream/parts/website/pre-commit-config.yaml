@@ -10,4 +10,4 @@ repos:
         entry: run-astro-check.sh
         language: system
         pass_filenames: false
-        files: '^(src/|astro\.config\.[cm]?[jt]s$|tsconfig\.json$|package(-lock)?\.json$)'
+        always_run: true  # astro check checks the whole project, not only src/

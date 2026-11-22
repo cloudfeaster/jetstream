@@ -199,6 +199,7 @@ def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
     assert {".nvmrc", ".github/workflows/jetstream-website-ci.yaml", ".jetstream/docs/website/website.md"} <= set(want.files)
     hooks: dict[str, Any] = yaml.safe_load(want.files[".pre-commit-config.yaml"].content)
     assert [hook["id"] for hook in hooks["repos"][0]["hooks"]][-2:] == ["licensecheck", "astro-check"]
+    assert hooks["repos"][0]["hooks"][-1]["always_run"]  # astro check checks the whole project, wherever a commit changes it
     dependabot: dict[str, Any] = yaml.safe_load(want.files[".github/dependabot.yml"].content)
     assert [update["package-ecosystem"] for update in dependabot["updates"]] == ["uv", "github-actions", "npm"]
     assert want.gitignore_block.splitlines()[-3:] == ["node_modules/", ".astro/", sync.GITIGNORE_END]

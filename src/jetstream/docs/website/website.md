@@ -15,7 +15,7 @@ A package whose code ships to the browser, and so ends up in the built site, goe
 |---|---|
 | `.nvmrc` | the Node version, for local setup and every workflow |
 | `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main` |
-| the `astro-check` hook | `astro check` (Astro components, TypeScript and content collections), when anything in `src/` or the site's config changes |
+| the `astro-check` hook | `astro check` (Astro components, TypeScript and content collections), at every commit, since it checks the whole project |
 | a Dependabot `npm` entry | the site's npm updates, grouped and with core's cooldown |
 | `.gitignore` lines | `node_modules/` and `.astro/` |
 
