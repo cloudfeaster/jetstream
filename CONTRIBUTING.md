@@ -35,6 +35,17 @@ bin/update-binary.py <tool> <version>   # a named version, even inside the coold
 
 It updates the version and every platform's SHA-256 in `binaries.toml`, after checking GitHub's digests against the checksums file the project publishes. Commit it as a `fix:`, so the bump is released.
 
+## Keeping the uv floor current
+
+Every repo gets its uv floor from core's `[tool.uv] required-version` (`src/jetstream/parts/core/pyproject.toml`). It's a floor (`>=`), not a pin: uv refuses to run below it, locally and in CI (`astral-sh/setup-uv` reads it), and `cfg4dev.sh`'s `uv self update` keeps everyone above it without anyone bumping a pin.
+
+It has a ceiling too. Dependabot runs `uv lock` with the uv in [dependabot-core's uv Dockerfile](https://github.com/dependabot/dependabot-core/blob/main/uv/Dockerfile), so a floor above that uv makes every Dependabot uv update fail. The `uv floor` workflow checks every night with `bin/check-uv-floor.py --verbose`, and fails when the floor:
+
+- is above Dependabot's uv: lower it to Dependabot's uv;
+- is a minor version or more behind Dependabot's uv (0.13.x when Dependabot is on 0.14.y): raise it to Dependabot's uv. Within a minor version it can lag, so a floor bump, which every repo takes in a release, comes a few times a year rather than with every uv release.
+
+To change it, edit `required-version` in core's part, run `jetstream sync` (jetstream's own `pyproject.toml` has the same key) and `uv lock`, and commit it as a `fix:`, so it's released.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please), from the Conventional Commits on `main`:

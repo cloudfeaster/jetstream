@@ -1,0 +1,45 @@
+---
+# Fails when the uv floor every repo gets from core ([tool.uv]
+# required-version) needs changing: it's above the uv Dependabot runs, which
+# makes Dependabot's uv lock fail, or a minor version or more behind it.
+# GitHub emails a failed run to whoever last changed the schedule below;
+# change the floor as CONTRIBUTING.md "Keeping the uv floor current" says.
+# Not named jetstream-*.yaml: jetstream syncs itself, and sync deletes any
+# jetstream-* workflow the release doesn't ship.
+name: uv floor
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: uv floor is current
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          # No Actions cache, as in jetstream-lint.yaml: jetstream wheels are
+          # never kept anywhere but the machine that built them.
+          enable-cache: false
+
+      - name: Install jetstream's dev environment
+        run: uv sync --locked
+
+      - name: Check the uv floor against Dependabot's uv
+        run: uv run --no-sync bin/check-uv-floor.py --verbose
