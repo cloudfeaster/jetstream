@@ -4,7 +4,7 @@
 
 The public pack is for a repo that's public. It writes `.coderabbit.yaml`, so [CodeRabbit](https://www.coderabbit.ai/) reviews every pull request the same way in every public repo: in Canadian English (`en-CA`), with the `chill` review profile and a high-level summary added to the pull request's description. CodeRabbit's full reviews are free for public repos; a private repo leaves the pack out.
 
-CodeRabbit reads the file from the repo; the CodeRabbit GitHub App must be installed on the repo for it to review anything. It doesn't review draft pull requests, so its first review comes when the pull request is marked ready ([dev-workflow.md](../core/dev-workflow.md)).
+CodeRabbit reads the file from the repo; the CodeRabbit GitHub App must be installed on the repo for it to review anything. It reviews pull requests into the default branch on its own, but not drafts, so its first review comes when the pull request is marked ready ([dev-workflow.md](../core/dev-workflow.md)). A pull request into any other branch isn't reviewed unless `reviews.auto_review.base_branches` lists that branch, which the file doesn't.
 
 ## Adding the pack
 
