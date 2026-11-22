@@ -1,8 +1,10 @@
 ---
 # Written by `jetstream sync` (website pack); don't edit.
 #
-# Builds the site, to prove it still builds. astro check is a pre-commit
-# hook, so it runs in jetstream-lint.yaml.
+# Builds the site, to prove it still builds, then checks the links between
+# its pages and files (run-lychee.sh, offline). astro check is a pre-commit
+# hook, so it runs in jetstream-lint.yaml; links to other sites are checked
+# every night, in jetstream-website-links.yaml.
 name: jetstream website CI
 
 on:  # yamllint disable-line rule:truthy
@@ -30,6 +32,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          # No Actions cache, as in jetstream-lint.yaml.
+          enable-cache: false
+
+      - name: Install jetstream and its tools
+        run: uv sync --locked
+
       - name: Install Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
@@ -41,3 +52,6 @@ jobs:
 
       - name: Build the site
         run: node_modules/.bin/astro build
+
+      - name: Check the site's links
+        run: uv run --no-sync run-lychee.sh
