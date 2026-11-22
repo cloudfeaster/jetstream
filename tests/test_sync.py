@@ -157,7 +157,11 @@ def test_public_pack_adds_coderabbit_config() -> None:
     assert set(want.files) - set(sync.expected(("core",)).files) == {".coderabbit.yaml", ".jetstream/docs/public/coderabbit.md"}
     config: dict[str, Any] = yaml.safe_load(want.files[".coderabbit.yaml"].content)
     assert config["language"] == "en-CA"
-    assert config["reviews"] == {"profile": "chill", "high_level_summary": True}
+    assert config["reviews"] == {
+        "profile": "chill",
+        "high_level_summary": True,
+        "auto_review": {"ignore_usernames": ["cloudfeaster-release[bot]"]},
+    }
 
 
 # --- what the python pack adds
