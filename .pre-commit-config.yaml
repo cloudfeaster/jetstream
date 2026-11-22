@@ -43,7 +43,7 @@ repos:
         entry: run-json-lint.sh
         language: system
         pass_filenames: false
-        types: [json]
+        files: \.(json|webmanifest)$  # a web app manifest is JSON, which identify doesn't know
 
       - id: mado
         name: mado (Markdown lint)
