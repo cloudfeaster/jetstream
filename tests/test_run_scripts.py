@@ -762,6 +762,41 @@ def test_update_jetstream_leaves_a_pull_request_that_is_already_up_to_date(repo:
     assert not git(repo, "status", "--porcelain")
 
 
+# --- astro check (website pack)
+
+ASTRO_PACKAGES: Final[tuple[str, ...]] = ("astro", "@astrojs/check", "typescript")
+
+
+def install_fake_astro(repo: Path) -> None:
+    """Put the packages run-astro-check.sh needs in ``repo``'s node_modules, with an astro that only says it ran."""
+    for package in ASTRO_PACKAGES:
+        manifest: Path = repo / "node_modules" / package / "package.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(json.dumps({"name": package}))
+    astro: Path = repo / "node_modules" / ".bin" / "astro"
+    astro.parent.mkdir()
+    astro.write_text('#!/bin/bash\necho "fake astro $*"\n')
+    astro.chmod(0o755)
+
+
+def test_astro_check_runs_the_sites_astro(repo: Path, run: Run) -> None:
+    """The hook runs `astro check` from the site's own node_modules."""
+    install_fake_astro(repo)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh")
+    assert result.returncode == 0
+    assert result.stdout == "fake astro check\n"
+
+
+@pytest.mark.parametrize("missing", ASTRO_PACKAGES)
+def test_astro_check_names_a_missing_package(repo: Path, run: Run, missing: str) -> None:
+    """Without one of the packages astro check needs, the hook fails, naming it."""
+    install_fake_astro(repo)
+    shutil.rmtree(repo / "node_modules" / missing)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh")
+    assert result.returncode == 1
+    assert f"{missing} isn't in node_modules" in result.stderr
+
+
 # --- unit-tests
 
 

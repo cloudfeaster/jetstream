@@ -1,0 +1,13 @@
+---
+# The website pack's hooks. `jetstream sync` appends what follows the marker
+# to the earlier packs' hooks list; the lines above it make this file valid YAML.
+repos:
+  - repo: local
+    hooks:
+      # >>> jetstream: appended
+      - id: astro-check
+        name: astro check (Astro and TypeScript)
+        entry: run-astro-check.sh
+        language: system
+        pass_filenames: false
+        always_run: true  # astro check checks the whole project, not only src/
