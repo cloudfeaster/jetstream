@@ -18,6 +18,8 @@ usage() {
     exit 1
 }
 
+# (an empty array is unbound under set -u before Bash 4.4, and macOS has 3.2,
+# hence ${offline[@]+...} below)
 offline=(--offline)
 if [[ $# == 1 && $1 == --external ]]; then
     offline=()
@@ -101,38 +103,41 @@ remap+=(--remap "^file://([^/]+)/ ${scheme:-https}://\$1/")
 # A web app manifest is JSON, which lychee doesn't read, so its links (icons,
 # start_url, ...) go on an HTML page of their own, <manifest>.html, resolved
 # as a browser resolves them: against the manifest's own URL on the site.
+# scope isn't one: it's a prefix of the site's URLs, not something a browser
+# fetches. Node finds the manifests, and prints each page it writes.
 inputs=(dist)
-shopt -s globstar nullglob
-manifests=(dist/**/*.webmanifest dist/**/manifest.json)
-shopt -u globstar nullglob
-if [[ ${#manifests[@]} -gt 0 ]]; then
-    node --input-type=module -e '
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+manifest_pages="$(node --input-type=module -e '
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-const [site, base, root, out, ...manifests] = process.argv.slice(1);
+const [site, base, root, out] = process.argv.slice(1);
 const origin = site || "https://site.invalid";
 const attribute = (value) => value.replaceAll("&", "&amp;").replaceAll("\"", "&quot;");
+const manifests = readdirSync("dist", { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && (entry.name.endsWith(".webmanifest") || entry.name === "manifest.json"))
+    .map((entry) => join(entry.parentPath, entry.name));
 for (const manifest of manifests) {
     const path = manifest.replace(/^dist\//, "");
     const url = new URL([base, path].filter(Boolean).join("/"), origin + "/");
     const json = JSON.parse(readFileSync(manifest, "utf8"));
     const images = (list) => (Array.isArray(list) ? list : []).map((image) => image?.src);
     const shortcuts = Array.isArray(json.shortcuts) ? json.shortcuts : [];
-    const links = [json.start_url, json.scope, ...images(json.icons), ...images(json.screenshots), ...shortcuts.flatMap((shortcut) => [shortcut?.url, ...images(shortcut?.icons)])]
+    const links = [json.start_url, ...images(json.icons), ...images(json.screenshots), ...shortcuts.flatMap((shortcut) => [shortcut?.url, ...images(shortcut?.icons)])]
         .filter((link) => typeof link === "string")
         .map((link) => new URL(link, url))
-        .map((link) => (link.origin === origin ? "file://" + root + link.pathname : link.href));
+        .map((link) => (link.origin === origin ? "file://" + root + link.pathname + link.hash : link.href));
     const page = join(out, path + ".html");
     mkdirSync(dirname(page), { recursive: true });
     writeFileSync(page, "<html><body>" + links.map((link) => "<a href=\"" + attribute(link) + "\">" + attribute(link) + "</a>").join("") + "</body></html>");
+    console.log(page);
 }
-' "${site}" "${base}" "${root}" "${manifest_links}" "${manifests[@]}"
+' "${site}" "${base}" "${root}" "${manifest_links}")"
+if [[ -n "${manifest_pages}" ]]; then
     inputs+=("${manifest_links}")
 fi
 
 lychee \
     --no-progress \
-    "${offline[@]}" \
+    ${offline[@]+"${offline[@]}"} \
     --include-fragments \
     --index-files index.html \
     --root-dir "${root}" \

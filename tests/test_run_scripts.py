@@ -935,8 +935,9 @@ def write_manifest(repo: Path, path: str, manifest: dict[str, Any]) -> None:
         ({"site": SITE, "base": "/docs"}, "manifest.webmanifest", {"start_url": "./", "scope": "./", "icons": [{"src": "icon.png"}], "shortcuts": [{"url": "about/", "icons": [{"src": "/docs/icon.png"}]}]}),
         ({}, "manifest.webmanifest", {"start_url": "/", "icons": [{"src": "icon.png"}]}),
         ({"site": SITE, "base": "/docs"}, "about/manifest.json", {"start_url": "../", "icons": [{"src": f"{SITE}/docs/icon.png"}, {"src": "https://www.iana.org/icon.png"}]}),
+        ({"site": SITE, "base": "/docs"}, "manifest.webmanifest", {"start_url": "about/index.html#team", "scope": "app/"}),  # scope is a prefix, not a page: dist/app/ needn't exist
     ],
-    ids=["base", "no-site-or-base", "manifest-json-in-a-folder"],
+    ids=["base", "no-site-or-base", "manifest-json-in-a-folder", "fragment-and-a-scope-with-no-page"],
 )
 def test_lychee_passes_a_web_app_manifests_links(repo: Path, run: Run, config: dict[str, str], path: str, manifest: dict[str, Any]) -> None:
     """The links in a web app manifest are resolved against the manifest's own URL, as a browser resolves them, and checked against dist/."""
@@ -948,8 +949,8 @@ def test_lychee_passes_a_web_app_manifests_links(repo: Path, run: Run, config: d
 
 @pytest.mark.parametrize(
     "manifest",
-    [{"icons": [{"src": "icon-missing.png"}]}, {"start_url": "missing/"}, {"shortcuts": [{"url": "./", "icons": [{"src": "/icon.png"}]}]}],
-    ids=["missing-icon", "missing-start-url", "shortcut-icon-outside-the-base"],
+    [{"icons": [{"src": "icon-missing.png"}]}, {"start_url": "missing/"}, {"start_url": "about/index.html#nowhere"}, {"shortcuts": [{"url": "./", "icons": [{"src": "/icon.png"}]}]}],
+    ids=["missing-icon", "missing-start-url", "missing-fragment", "shortcut-icon-outside-the-base"],
 )
 def test_lychee_fails_a_broken_link_in_a_web_app_manifest(repo: Path, run: Run, manifest: dict[str, Any]) -> None:
     """A link in a web app manifest to a file that isn't in dist/ fails, offline."""
