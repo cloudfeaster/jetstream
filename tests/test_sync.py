@@ -152,9 +152,9 @@ def test_core_owns_its_files() -> None:
 
 
 def test_public_pack_adds_coderabbit_config() -> None:
-    """The public pack writes .coderabbit.yaml and its doc, and core alone doesn't."""
+    """The public pack writes .coderabbit.yaml, its doc and its part of the ship skill (beside core's SKILL.md), and core alone doesn't."""
     want: sync.Expected = sync.expected(("core", "public"))
-    assert set(want.files) - set(sync.expected(("core",)).files) == {".coderabbit.yaml", ".jetstream/docs/public/coderabbit.md"}
+    assert set(want.files) - set(sync.expected(("core",)).files) == {".coderabbit.yaml", ".jetstream/docs/public/coderabbit.md", ".claude/skills/jetstream-ship/coderabbit.md"}
     config: dict[str, Any] = yaml.safe_load(want.files[".coderabbit.yaml"].content)
     assert config["language"] == "en-CA"
     assert config["reviews"] == {
