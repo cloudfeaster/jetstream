@@ -822,13 +822,13 @@ LYCHEE_BROKEN_LINKS: Final[int] = 2  # lychee's exit code when a link is broken
     ("config", "links"),
     [
         ({}, ["/about/", "/about/#team", "#top", "about/"]),
-        ({"site": SITE, "base": "/docs"}, ["/docs/about/", "/docs/about/#team", "#top", f"{SITE}/docs/about/"]),
+        ({"site": SITE, "base": "/docs"}, ["/docs/about/", "/docs/about/#team", "#top", f"{SITE}/docs/about/", "//example.org/docs/about/"]),
         ({"site": f"{SITE}/", "base": "/a/b/"}, ["/a/b/about/", f"{SITE}/a/b/about/#team"]),
     ],
     ids=["no-base", "base", "nested-base-with-slashes"],
 )
 def test_lychee_passes_the_sites_own_links(repo: Path, run: Run, config: dict[str, str], links: list[str]) -> None:
-    """Root-relative links under the site's base, and absolute links to the site itself, are checked against dist/."""
+    """Root-relative links under the site's base, and absolute and scheme-relative links to the site itself, are checked against dist/."""
     build_site(repo, config, links)
     result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -836,8 +836,8 @@ def test_lychee_passes_the_sites_own_links(repo: Path, run: Run, config: dict[st
 
 @pytest.mark.parametrize(
     "link",
-    ["/docs/missing/", "/docs/about/#nowhere", "#nowhere", "/about/", f"{SITE}/docs/missing/"],
-    ids=["missing-page", "missing-fragment", "missing-local-fragment", "outside-the-base", "missing-absolute"],
+    ["/docs/missing/", "/docs/about/#nowhere", "#nowhere", "/about/", f"{SITE}/docs/missing/", "//example.org/docs/missing/"],
+    ids=["missing-page", "missing-fragment", "missing-local-fragment", "outside-the-base", "missing-absolute", "missing-scheme-relative"],
 )
 def test_lychee_fails_a_broken_link(repo: Path, run: Run, link: str) -> None:
     """A link to a page or #fragment that isn't in dist/ fails, offline."""

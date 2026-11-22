@@ -6,7 +6,8 @@
 #
 # Links are checked as the deployed site would resolve them. The site's
 # `site` and `base`, read from its Astro config, map root-relative links
-# (/<base>/...) and absolute links to the site itself (<site>/<base>/...)
+# (/<base>/...), and absolute and scheme-relative links to the site itself
+# (<site>/<base>/..., //<host>/<base>/...),
 # onto dist/.
 
 set -euo pipefail
@@ -78,15 +79,20 @@ else
     ln -s "${toplevel}/dist" "${root}"
 fi
 
-remap=()
-if [[ -n "${site}" ]]; then
-    # the site's own absolute links are checked against dist/, not the deployed site
-    # (site is a scheme, host and port, so . is the only regex character in it)
-    remap+=(--remap "^${site//./\\.}/ file://${root}/")
-fi
 # lychee resolves a scheme-relative link (//host/path) against the page's
 # file:// URL, giving file://host/path; the deployed site would use its own
 # scheme. A local file's URL has no host (file:///...), so it can't match.
+# lychee applies only the first remap that matches, so the site's own links
+# come first.
+remap=()
+if [[ -n "${site}" ]]; then
+    # the site's own absolute and scheme-relative links are checked against
+    # dist/, not the deployed site (site is a scheme, host and port, so . is
+    # the only regex character in it)
+    host="${site#*://}"
+    remap+=(--remap "^${site//./\\.}/ file://${root}/")
+    remap+=(--remap "^file://${host//./\\.}/ file://${root}/")
+fi
 scheme="${site%%://*}"
 remap+=(--remap "^file://([^/]+)/ ${scheme:-https}://\$1/")
 
