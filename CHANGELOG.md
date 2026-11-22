@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/cloudfeaster/jetstream/compare/v0.9.0...v0.9.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* stage new-repo's files before the first check, and qualify CodeRabbit's review start ([#68](https://github.com/cloudfeaster/jetstream/issues/68)) ([0237d43](https://github.com/cloudfeaster/jetstream/commit/0237d438eac5cbaab6184c857618d49825bc8491))
+
 ## [0.9.0](https://github.com/cloudfeaster/jetstream/compare/v0.8.0...v0.9.0) (2026-11-22)
 
 
