@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/cloudfeaster/jetstream/compare/v0.8.0...v0.9.0) (2026-11-22)
+
+
+### Features
+
+* add public pack with CodeRabbit config ([#67](https://github.com/cloudfeaster/jetstream/issues/67)) ([96a1a07](https://github.com/cloudfeaster/jetstream/commit/96a1a07580aa2236ef3d71267984918b9f7fb8f9))
+* check the license of every tool jetstream installs ([#66](https://github.com/cloudfeaster/jetstream/issues/66)) ([1d85c55](https://github.com/cloudfeaster/jetstream/commit/1d85c5547e12cb969f4c05b3ec4e34722e7a6853))
+
+
+### Bug Fixes
+
+* start a new repo the way the org expects: branch main, no wiki, set up for jetstream at once ([#63](https://github.com/cloudfeaster/jetstream/issues/63)) ([7bcc92f](https://github.com/cloudfeaster/jetstream/commit/7bcc92fb54278b13a4c465ccfadeedb0c80795f9))
+
 ## [0.8.0](https://github.com/cloudfeaster/jetstream/compare/v0.7.0...v0.8.0) (2026-11-21)
 
 
