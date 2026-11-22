@@ -62,6 +62,7 @@ Add `--pack python` for a python repo. If `new-repo` reports a problem, tell the
 
 ```bash
 source cfg4dev.sh
+git add -A  # pre-commit's --all-files checks only tracked files
 pre-commit run --all-files
 ```
 

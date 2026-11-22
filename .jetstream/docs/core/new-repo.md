@@ -49,10 +49,11 @@ In Claude Code, `/jetstream-new-repo` does steps 1 to 6, then lists step 7.
 
     ```bash
     source cfg4dev.sh
+    git add -A
     pre-commit run --all-files
     ```
 
-    `cfg4dev.sh` runs `uv sync`, which writes `uv.lock`.
+    `cfg4dev.sh` runs `uv sync`, which writes `uv.lock`. `--all-files` checks only the files git tracks, so stage the new ones first, or most hooks check nothing.
 
 1. **Commit, open a pull request, and merge** once `jetstream lint` passes ([dev-workflow.md](dev-workflow.md)):
 
