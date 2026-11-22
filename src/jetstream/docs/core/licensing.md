@@ -36,6 +36,20 @@ A dependency that needs an exception is a decision for jetstream, not for one re
 
 A data file from a published dataset is never committed, whatever its license. A script builds it, it's gitignored, and code that needs it fails with a message saying how to build it. Tests use a small stand-in instead. The dataset's credit goes in the README next to the code that uses it.
 
+## The repo's own licenses
+
+Most repos have one license, for their code, in `LICENSE`. A repo whose own written content or brand assets need other terms, such as a website, can have up to three, each in a file of its own:
+
+| File | Covers | Example |
+|---|---|---|
+| `LICENSE` | the code: every file that neither of the others covers | MIT, or a proprietary license for a repo that's sold |
+| `LICENSE-docs` | written content: the Markdown and MDX in the repo's content folders, such as a site's `src/content/` | CC BY 4.0 |
+| `TRADEMARKS.md` | brand assets: the name, logo and icons, by path, which neither license covers | all rights reserved, with how the name may be used |
+
+The repo chooses the licenses; the file names are fixed, so anyone can find them in any repo. Which file covers a file depends only on its path, never on what's in it, so a `.astro` page, or any other file of code, is code, its text included. Prose that should be under the content license goes in a content folder.
+
+A repo with more than one has a "License" section in its `README.md`, listing each file and what it covers.
+
 ## Copyright
 
-Copyright is stated once, in the repo's `LICENSE`. Files don't have copyright headers.
+Copyright is stated in each of the repo's license files (`LICENSE`, and `LICENSE-docs` and `TRADEMARKS.md` if it has them), and in its README's "License" section if it has one. Files don't have copyright headers.
