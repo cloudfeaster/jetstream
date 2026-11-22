@@ -84,4 +84,4 @@ List these for the user, with links to the docs:
 
 1. anything in step 3 that wasn't done, for an org owner to do before the first pull request merges;
 1. once it merges, test the alert sync and the updates by running each workflow by hand on `main` (their "Adding a repo" sections);
-1. for a public repo, once it merges, add the public pack on a new branch, as `.jetstream/docs/public/coderabbit.md` says ("Adding the pack"): `jetstream new-repo` doesn't take it.
+1. for a public repo, once it merges, add the public pack on a new branch (`jetstream new-repo` doesn't take it): add `"public"` to `[tool.jetstream] packs` and `public` to the extras on `cloudfeaster-jetstream` in `[dependency-groups] dev`, run `uv lock` and `jetstream sync`, and commit. The pack writes `.coderabbit.yaml` and `.jetstream/docs/public/coderabbit.md`.
