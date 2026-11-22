@@ -18,7 +18,10 @@ unset _jetstream_toplevel
 uv self update || true
 
 if uv sync; then
-    if [[ -z "${VIRTUAL_ENV:-}" ]]; then
+    # activate this repo's .venv, even when another repo's is active, or
+    # jetstream sync and the git hook would use that repo's tools (activate
+    # deactivates the other one first)
+    if [[ "${VIRTUAL_ENV:-}" != "${PWD}/.venv" ]]; then
         # shellcheck disable=SC1091
         source ./.venv/bin/activate
     fi
