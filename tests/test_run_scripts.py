@@ -856,13 +856,23 @@ def test_lychee_checks_the_sites_own_links_however_site_is_written(repo: Path, r
     assert "1 Error" in result.stdout
 
 
-def test_lychee_reads_a_typescript_config_with_an_enum(repo: Path, run: Run) -> None:
-    """An astro.config.ts with TypeScript that type stripping can't handle, such as an enum, is still read."""
+def test_lychee_reads_a_typescript_config(repo: Path, run: Run) -> None:
+    """An astro.config.ts is read by stripping its types."""
     build_site(repo, {}, ["/docs/about/"])
+    (repo / "astro.config.mjs").unlink()
+    (repo / "astro.config.ts").write_text('const base: string = "/docs";\n\nexport default { site: "https://example.org", base };\n')
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_lychee_says_what_to_do_about_a_typescript_enum(repo: Path, run: Run) -> None:
+    """An astro.config.ts that Node can't strip, such as one with an enum, fails with a message saying what to use instead."""
+    build_site(repo, {}, [])
     (repo / "astro.config.mjs").unlink()
     (repo / "astro.config.ts").write_text('enum Paths {\n    Docs = "/docs",\n}\n\nexport default { site: "https://example.org", base: Paths.Docs };\n')
     result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 1
+    assert "astro.config.ts uses TypeScript that Node can only compile, not strip, such as an enum; use a const object instead" in result.stderr
 
 
 def test_lychee_offline_skips_a_scheme_relative_link_to_another_site(repo: Path, run: Run) -> None:

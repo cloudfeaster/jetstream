@@ -47,11 +47,19 @@ fi
 
 # "<site>\n<base>\n": site as an origin, as lychee writes the URLs it parses
 # (https://example.org, with no default port or trailing slash), and base
-# without its leading and trailing slashes. --experimental-transform-types
-# compiles TypeScript that type stripping can't, such as an enum.
-site_and_base="$(node --experimental-transform-types --no-warnings --input-type=module -e '
+# without its leading and trailing slashes. Node reads a .ts config by
+# stripping its types, so it can't read TypeScript that only compiling
+# could, such as an enum.
+site_and_base="$(node --input-type=module -e '
 import { pathToFileURL } from "node:url";
-const config = (await import(pathToFileURL(process.argv[1]).href)).default;
+let config;
+try {
+    config = (await import(pathToFileURL(process.argv[1]).href)).default;
+} catch (error) {
+    if (error.code !== "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX") throw error;
+    console.error("*** run-lychee.sh: " + process.argv[1] + " uses TypeScript that Node can only compile, not strip, such as an enum; use a const object instead (" + error.message + ")");
+    process.exit(1);
+}
 console.log(config.site ? new URL(config.site).origin : "");
 console.log((config.base ?? "").replace(/^\/+|\/+$/g, ""));
 ' "${config}")"
