@@ -20,7 +20,7 @@ A package whose code ships to the browser, and so ends up in the built site, goe
 | a Dependabot `npm` entry | the site's npm updates, grouped and with core's cooldown |
 | `.gitignore` lines | `node_modules/` and `.astro/` |
 
-Locally, `cfg4dev.sh` runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node and runs `npm ci` when the repo has an `.nvmrc`, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
+Locally, `cfg4dev.sh` runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node when the repo has an `.nvmrc`, and runs `npm ci` when it has a `package-lock.json` too, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
 
 ## Links
 
@@ -35,7 +35,7 @@ A link to another site that's right but can't be checked, because the site block
 
 ## Node
 
-Install Node yourself, at the version in `.nvmrc` (with [nvm](https://github.com/nvm-sh/nvm), `nvm use`).
+Install Node yourself, at the major version in `.nvmrc`, which is the one CI uses (with [nvm](https://github.com/nvm-sh/nvm), `nvm install`). `cfg4dev.sh` warns when `node` is another version, or isn't installed.
 
 ## Adding the pack
 

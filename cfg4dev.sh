@@ -33,8 +33,19 @@ if uv sync; then
     fi
     unset _jetstream_pyproject _jetstream_pyproject_synced
 
-    # the website pack: the site's npm packages, when package-lock.json is
-    # newer than what's installed (npm ci writes node_modules/.package-lock.json)
+    # the website pack: Node is installed by hand, so say when it isn't the
+    # major version .nvmrc names, which is the one CI uses
+    if [[ -f .nvmrc ]]; then
+        _jetstream_node="$(node --version 2> /dev/null || true)"
+        _jetstream_node="${_jetstream_node#v}"
+        if [[ "${_jetstream_node%%.*}" != "$(< .nvmrc)" ]]; then
+            echo "*** cfg4dev.sh: .nvmrc says Node $(< .nvmrc), but node is ${_jetstream_node:-not installed}: install Node $(< .nvmrc) (with nvm, nvm install)" >&2
+        fi
+        unset _jetstream_node
+    fi
+
+    # the site's npm packages, when package-lock.json is newer than what's
+    # installed (npm ci writes node_modules/.package-lock.json)
     if [[ -f .nvmrc && -f package-lock.json ]]; then
         if [[ ! package-lock.json -ot node_modules/.package-lock.json ]]; then
             npm ci
