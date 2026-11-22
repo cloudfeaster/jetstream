@@ -1,7 +1,7 @@
 # jetstream
 
 <p align="center">
-  <img src="images/jetstream-hero.png" alt="jetstream logo: a cloud with orange jet streams" width="480">
+  <img src="assets/jetstream-hero.svg" alt="jetstream logo: a cloud with orange jet streams" width="480">
 </p>
 
 jetstream standardizes the development workflow and toolchain for every Cloudfeaster repo.
