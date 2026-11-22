@@ -12,7 +12,7 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 import pytest
 
@@ -459,6 +459,29 @@ def test_trivy_reads_jetstreams_and_the_repos_exceptions(repo: Path, run: Run) -
 
     (repo / ".trivyignore").write_text("".join(f"{vuln_id} exp:2000-01-01\n" for vuln_id in ids))  # expired
     assert run(repo, "run-trivy.sh").returncode != 0
+
+
+def test_trivy_config_includes_dev_dependencies(repo: Path, tmp_path: Path) -> None:
+    """The core .trivy.yaml makes trivy see a lockfile's dev dependencies, which it otherwise leaves out (a CycloneDX SBOM lists what it sees, offline)."""
+    lockfile: dict[str, Any] = {
+        "name": "site",
+        "lockfileVersion": 3,
+        "requires": True,
+        "packages": {
+            "": {"name": "site", "devDependencies": {"left-pad": "1.3.0"}},
+            "node_modules/left-pad": {"version": "1.3.0", "resolved": "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz", "dev": True},
+        },
+    }
+    add(repo, {"package-lock.json": json.dumps(lockfile)})
+    result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the test's own arguments)
+        [str(VENV_BIN / "trivy"), "fs", "--quiet", "--config", ".trivy.yaml", "--format", "cyclonedx", "--cache-dir", str(tmp_path / "cache"), "."],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    names: list[str] = [component["name"] for component in json.loads(result.stdout).get("components", [])]
+    assert "left-pad" in names
 
 
 # --- pip-audit and licensecheck

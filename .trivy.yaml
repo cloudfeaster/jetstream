@@ -12,5 +12,8 @@ scan:
     - .venv
     - node_modules
 
-fs:
+# Dev dependencies are scanned too: jetstream's tools in uv.lock, and a
+# site's whole toolchain in package-lock.json. trivy reads this under pkg:,
+# and silently ignores it anywhere else.
+pkg:
   include-dev-deps: true
