@@ -48,7 +48,7 @@ Most repos have one license, for their code, in `LICENSE`. A repo whose own writ
 | `LICENSE-docs` | written content: the Markdown and MDX in the repo's content folders, such as a site's `src/content/` | CC BY 4.0 |
 | `TRADEMARKS.md` | brand assets: the name, logo and icons, by path, which neither license covers | all rights reserved, with how the name may be used |
 
-The repo chooses the licenses; the file names are fixed, so anyone can find them in any repo. Which file covers a file depends only on its path, never on what's in it, so a `.astro` page, or any other file of code, is code, its text included. Prose that should be under the content license goes in a Markdown or MDX file in a content folder; any other file there, such as a `.json` one, is code.
+The repo chooses the licenses; the file names are fixed, so anyone can find them in any repo. Which file covers a file depends only on its path, never on what's in it, so a `.astro` page, or any other file of code, is code, its text included. Prose that should be under the content license goes in a Markdown or MDX file in a content folder; any other file there, such as a `.json` one, is code, unless `TRADEMARKS.md` lists it.
 
 A repo with more than one has a "License" section in its `README.md`, listing each file and what it covers.
 
