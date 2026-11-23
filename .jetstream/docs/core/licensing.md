@@ -12,6 +12,8 @@ Third-party software that's part of a product (linked with it, embedded in it, o
 - **Allowed for a transitive dependency only**: MPL-2.0. It's weak copyleft that only covers changes to that package's own files, not the code that uses it.
 - **Not allowed**: GPL, LGPL and AGPL, in any version, and any license not listed here.
 
+Two permissive licenses are left out on purpose. CC0-1.0, a public-domain dedication, grants no patent rights, so it isn't allowed for code that ships. BlueOak-1.0.0 isn't allowed until a package that needs it has been reviewed. A package offered under either or an allowed license, such as `(MIT OR CC0-1.0)`, is fine.
+
 A component bundled inside a package counts under its own license, not the package's. For example, `shellcheck-py` is MIT, but the ShellCheck binary in its wheels is GPL-3.0. So check what a package contains, not just the license in its metadata.
 
 ## Development tools
