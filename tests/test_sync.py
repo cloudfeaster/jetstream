@@ -211,7 +211,7 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
 
 
 def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
-    """The website pack adds .nvmrc, .npmrc, website CI, the astro-check and npm-licenses hooks, npm updates and its .gitignore lines, after the python pack's."""
+    """The website pack adds .nvmrc, .npmrc, website CI (with its opt-in Pages deploy), the astro-check and npm-licenses hooks, npm updates and its .gitignore lines, after the python pack's."""
     want: sync.Expected = sync.expected(("core", "python", "website"))
     assert {
         ".nvmrc",
@@ -226,6 +226,9 @@ def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
     dependabot: dict[str, Any] = yaml.safe_load(want.files[".github/dependabot.yml"].content)
     assert [update["package-ecosystem"] for update in dependabot["updates"]] == ["uv", "github-actions", "npm"]
     assert want.gitignore_block.splitlines()[-4:] == ["node_modules/", ".astro/", ".lighthouseci/", sync.GITIGNORE_END]
+    ci: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-website-ci.yaml"].content)
+    assert ci["jobs"]["deploy"]["if"] == "needs.build.outputs.deploy == 'true'"  # only once the repo's Pages source is GitHub Actions
+    assert ci["jobs"]["deploy"]["permissions"] == {"pages": "write", "id-token": "write"}
 
 
 # --- sync, then check
