@@ -24,7 +24,7 @@ Locally, `cfg4dev.sh` runs `npm ci` when `package-lock.json` is newer than what'
 
 ## Licenses
 
-A site's text and logo usually need other terms than its code. The files that hold them, `LICENSE-docs` for the content in `src/content/` and `TRADEMARKS.md` for brand assets, are in [licensing.md](../core/licensing.md#the-repos-own-licenses). A page's text in a `.astro` file is code, under `LICENSE`.
+A site's text and logo usually need other terms than its code. The files that hold them, `LICENSE-docs` for the Markdown and MDX in `src/content/` and `TRADEMARKS.md` for brand assets, are in [licensing.md](../core/licensing.md#the-repos-own-licenses). A page's text in a `.astro` file is code, under `LICENSE`.
 
 ## Links
 
