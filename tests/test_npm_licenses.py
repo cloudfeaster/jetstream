@@ -27,10 +27,17 @@ from jetstream import npm_licenses
         ("SEE LICENSE IN LICENSE.md", False),
         ("(MIT", False),
         ("", False),
+        ("MIT OR", False),
+        ("MIT OR (GPL-3.0-only", False),
+        ("MIT OR )", False),
+        ("MIT AND", False),
+        ("OR MIT", False),
+        ("MIT GPL-3.0-only", False),
+        ("MIT OR (Apache-2.0 WITH)", False),
     ],
 )
 def test_allows_reads_spdx_expressions(expression: str, allowed: bool) -> None:  # noqa: FBT001 (a parametrized case)
-    """An OR needs one side allowed, an AND both, and anything that isn't a plain allowed license, a WITH exception included, isn't."""
+    """An OR needs one side allowed, an AND both; anything that isn't a plain allowed license, a WITH exception included, isn't, nor is a malformed expression, even with an allowed license in it."""
     assert npm_licenses.allows(expression, npm_licenses.ALLOWED) is allowed
 
 
@@ -61,6 +68,13 @@ def test_only_product_dependencies_are_checked() -> None:
     assert npm_licenses.failures(data) == ["node_modules/optional 1.0.0: LGPL-3.0-or-later isn't allowed in a transitive product dependency"]
 
 
+def test_a_workspaces_own_dependency_is_direct() -> None:
+    """A dependency that one of the repo's workspace packages declares is direct, like one the root declares, so MPL-2.0 isn't allowed in it."""
+    data: dict[str, Any] = lockfile({}, {"b": {"version": "2.0.0", "license": "MPL-2.0"}})
+    data["packages"]["packages/site"] = {"version": "1.0.0", "dependencies": {"b": "2.0.0"}}
+    assert npm_licenses.failures(data) == ["node_modules/b 2.0.0: MPL-2.0 isn't allowed in a direct product dependency"]
+
+
 @pytest.mark.parametrize("license_", [None, ["MIT"]], ids=["missing", "not-a-string"])
 def test_a_missing_or_unreadable_license_fails(license_: object) -> None:
     """A package with no license, or one npm didn't write as an SPDX expression, fails."""
@@ -76,3 +90,11 @@ def test_main_prints_each_failure_and_returns_1(tmp_path: Path, capsys: pytest.C
     assert capsys.readouterr().out == "node_modules/a 1.0.0: GPL-3.0-only isn't allowed in a direct product dependency\n"
     path.write_text(json.dumps(lockfile({}, {})))
     assert npm_licenses.main([str(path)]) == 0
+
+
+def test_main_rejects_a_lockfile_with_no_packages_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A lockfile from npm 6 or older, with no packages table, can't be checked, so it fails (exit 2) rather than passing."""
+    path: Path = tmp_path / "package-lock.json"
+    path.write_text(json.dumps({"lockfileVersion": 1, "dependencies": {"a": {"version": "1.0.0"}}}))
+    assert npm_licenses.main([str(path)]) == 2  # noqa: PLR2004 (main's exit code for a lockfile it can't check)
+    assert "no packages table" in capsys.readouterr().err

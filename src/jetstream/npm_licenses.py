@@ -10,7 +10,8 @@ build toolchain, are development tools, so they aren't checked.
 npm writes each package's license into the lockfile, as an SPDX expression
 such as ``MIT`` or ``(MIT OR Apache-2.0)``, so nothing needs installing.
 
-Usage, printing each package that fails::
+Usage, printing each package that fails (exit 1), or why the lockfile can't be
+checked (exit 2)::
 
     python -m jetstream.npm_licenses PACKAGE_LOCK
 """
@@ -32,7 +33,7 @@ WORD: Final[re.Pattern[str]] = re.compile(r"\(|\)|[^\s()]+")
 
 
 def allows(expression: str, allowed: frozenset[str]) -> bool:
-    """Return whether SPDX ``expression`` can be met with ``allowed`` licenses: any side of an OR, every side of an AND."""
+    """Return whether SPDX ``expression`` can be met with ``allowed`` licenses: any side of an OR, every side of an AND; a malformed one can't."""
     words: list[str] = WORD.findall(expression)
     position: int = 0
 
@@ -54,30 +55,36 @@ def allows(expression: str, allowed: frozenset[str]) -> bool:
 
     def one() -> bool:
         nonlocal position
-        if position >= len(words):
-            return False
+        if position >= len(words) or words[position] in {")", "AND", "OR", "WITH"}:
+            raise ValueError(expression)  # a missing license
         word: str = words[position]
         position += 1
         if word == "(":
             result: bool = either()
-            if position < len(words) and words[position] == ")":
-                position += 1
-                return result
-            return False
+            if position >= len(words) or words[position] != ")":
+                raise ValueError(expression)  # an unclosed parenthesis
+            position += 1
+            return result
         if position < len(words) and words[position] == "WITH":  # a license with an exception: not one licensing.md lists
+            if position + 1 >= len(words) or words[position + 1] in {"(", ")", "AND", "OR", "WITH"}:
+                raise ValueError(expression)  # WITH and no exception
             position += 2
             return False
         return word in allowed
 
-    result: bool = either()
+    try:
+        result: bool = either()
+    except ValueError:
+        return False
     return result and position == len(words)
 
 
 def failures(lockfile: dict[str, Any]) -> list[str]:
     """Return a line for each product dependency in ``lockfile`` whose license isn't allowed."""
     packages: dict[str, dict[str, Any]] = lockfile.get("packages", {})
-    root: dict[str, Any] = packages.get("", {})
-    direct: set[str] = {f"node_modules/{name}" for key in ("dependencies", "optionalDependencies") for name in root.get(key, {})}
+    # the repo's own packages, the root and any workspaces, are the ones with no node_modules/ in their path
+    own: list[dict[str, Any]] = [package for path, package in packages.items() if "node_modules/" not in path]
+    direct: set[str] = {f"node_modules/{name}" for package in own for key in ("dependencies", "optionalDependencies") for name in package.get(key, {})}
     found: list[str] = []
     for path, package in packages.items():
         # the repo's own workspace packages have no node_modules/ in their path, and a link points at one
@@ -92,8 +99,11 @@ def failures(lockfile: dict[str, Any]) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    """Check the lockfile named in ``argv``, printing each failure; return 1 if there are any."""
+    """Check the lockfile named in ``argv``, printing each failure; return 1 if there are any, and 2 if it can't be checked."""
     lockfile: dict[str, Any] = json.loads(Path(argv[0]).read_text())
+    if not isinstance(lockfile.get("packages"), dict):
+        sys.stderr.write(f"{argv[0]} has no packages table, so it's from npm 6 or older: run npm install with npm 7 or later to rewrite it\n")
+        return 2
     found: list[str] = failures(lockfile)
     for line in found:
         sys.stdout.write(f"{line}\n")

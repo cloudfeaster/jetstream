@@ -22,7 +22,9 @@ if [[ ! -f package-lock.json ]]; then
     exit 1
 fi
 
-if ! "${bin_dir}/python" -m jetstream.npm_licenses package-lock.json; then
+status=0
+"${bin_dir}/python" -m jetstream.npm_licenses package-lock.json || status=$?
+if [[ ${status} == 1 ]]; then
     echo "*** $(basename "$0"): the licenses above aren't allowed in a product dependency (.jetstream/docs/core/licensing.md); move a package that only builds the site to devDependencies, or replace it" >&2
-    exit 1
 fi
+exit "${status}"
