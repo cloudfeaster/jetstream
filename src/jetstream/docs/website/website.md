@@ -59,7 +59,7 @@ Website CI deploys the site to [GitHub Pages](https://docs.github.com/en/pages) 
 1. In the repo's Settings → Pages, set the source to "GitHub Actions", and add the custom domain, if it has one. GitHub creates the `github-pages` environment, which only `main` can deploy to.
 1. Run website CI on `main` (`gh workflow run jetstream-website-ci.yaml`), or push to it.
 
-To stop publishing, an owner unpublishes the site in Settings → Pages. A private repo's site is public, as any Pages site is. Pull requests get no preview: build the site and look at it locally (`astro build`, then `astro preview`).
+To stop publishing, an owner turns Pages off: in Settings → Pages, sets the source to "Deploy from a branch" with the branch `None`, or runs `gh api -X DELETE repos/<owner>/<repo>/pages`. Unpublishing the site isn't enough: the source stays "GitHub Actions", so the next run on `main` publishes it again. A private repo's site is public, as any Pages site is. Pull requests get no preview: build the site and look at it locally (`astro build`, then `astro preview`).
 
 ## Node
 
