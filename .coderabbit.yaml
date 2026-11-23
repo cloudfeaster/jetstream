@@ -11,3 +11,4 @@ reviews:
   auto_review:
     ignore_usernames:
       - cloudfeaster-release[bot]  # release-please's pull requests: versions and CHANGELOG.md
+      - dependabot[bot]  # dependency updates: mostly lockfiles, which CodeRabbit skips anyway; CI checks them
