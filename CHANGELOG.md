@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.12.0](https://github.com/cloudfeaster/jetstream/compare/v0.11.0...v0.12.0) (2026-11-23)
+
+
+### Features
+
+* check a site against jetstream's Lighthouse budgets ([#92](https://github.com/cloudfeaster/jetstream/issues/92)) ([15c0ac1](https://github.com/cloudfeaster/jetstream/commit/15c0ac1623afbd900dcca0c03994b7827086a41c))
+* check a site's product dependency licenses, and hold npm to 7-day-old releases ([#90](https://github.com/cloudfeaster/jetstream/issues/90)) ([760a856](https://github.com/cloudfeaster/jetstream/commit/760a856e36af4fcd25a88a8e3f1eeb905b7270eb))
+* don't have CodeRabbit review Dependabot's pull requests ([#95](https://github.com/cloudfeaster/jetstream/issues/95)) ([6c1b5d5](https://github.com/cloudfeaster/jetstream/commit/6c1b5d5f5b617f98ed59e210ba7cc551cda3d098))
+
+
+### Bug Fixes
+
+* activate the repo's own .venv in cfg4dev.sh, even when another is active ([#79](https://github.com/cloudfeaster/jetstream/issues/79)) ([807184e](https://github.com/cloudfeaster/jetstream/commit/807184ee5abb375c781112306816333d3841664a))
+* check web app manifests: their JSON, and their links ([#87](https://github.com/cloudfeaster/jetstream/issues/87)) ([1847a13](https://github.com/cloudfeaster/jetstream/commit/1847a139536bc30d33ce90b03ac08784a19b10de))
+* drop the basic-ftp exceptions, now that Lighthouse CI has the fixed version ([#96](https://github.com/cloudfeaster/jetstream/issues/96)) ([6078a82](https://github.com/cloudfeaster/jetstream/commit/6078a82b34f3d4c123075aa0f4a408dd00a598c5))
+* scan dev dependencies with trivy, as .trivy.yaml meant to ([#86](https://github.com/cloudfeaster/jetstream/issues/86)) ([3578efc](https://github.com/cloudfeaster/jetstream/commit/3578efcd60f481226e78852704778d34e18908a1))
+
+
+### Documentation
+
+* say CC0-1.0 and BlueOak-1.0.0 aren't allowed in a product, and why ([#94](https://github.com/cloudfeaster/jetstream/issues/94)) ([cc9638b](https://github.com/cloudfeaster/jetstream/commit/cc9638bb30d50d29d4569f2b7e0415bc2bd3ebd0))
+* say where a repo's own licenses go, when it has more than one ([#89](https://github.com/cloudfeaster/jetstream/issues/89)) ([a040bbb](https://github.com/cloudfeaster/jetstream/commit/a040bbb2f41c22d90c4d32b928c5b4d497f91359))
+
 ## [0.11.0](https://github.com/cloudfeaster/jetstream/compare/v0.10.0...v0.11.0) (2026-11-22)
 
 
