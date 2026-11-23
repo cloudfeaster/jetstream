@@ -37,10 +37,11 @@ base="$(sed -n 2p <<< "${site_and_base}")"
 
 # Lighthouse CI, from jetstream's lockfile, into .venv/jetstream-node. The
 # lockfile is copied to installed.json only once npm ci has finished, so an
-# install that fails part way is redone on the next run.
+# install that fails part way, or one whose lhci has gone, is redone on the
+# next run.
 package="$("${bin_dir}/python" -c 'import importlib.resources; print(importlib.resources.files("jetstream") / "node")')"
 tools="${bin_dir}/../jetstream-node"
-if ! cmp -s "${package}/package-lock.json" "${tools}/installed.json"; then
+if ! cmp -s "${package}/package-lock.json" "${tools}/installed.json" || [[ ! -x "${tools}/node_modules/.bin/lhci" ]]; then
     rm -rf "${tools}"
     mkdir -p "${tools}"
     cp -R "${package}/package.json" "${package}/package-lock.json" "${package}/stubs" "${tools}/"

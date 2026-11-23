@@ -856,18 +856,22 @@ def test_lighthouse_rejects_arguments(repo: Path, run: Run) -> None:
     assert "usage: run-lighthouse.sh" in result.stderr
 
 
-def test_lighthouse_redoes_an_install_that_didnt_finish(repo: Path, system_path: str, tmp_path: Path) -> None:
-    """An install that npm ci didn't finish isn't taken for a finished one: the next run installs again."""
+@pytest.mark.parametrize("left", ["copied-lockfile", "installed-json-without-lhci"])
+def test_lighthouse_redoes_an_install_that_isnt_complete(repo: Path, system_path: str, tmp_path: Path, left: str) -> None:
+    """An install npm ci didn't finish, or one whose lhci has gone, isn't taken for a finished one: the next run installs again."""
     tools: Path = VENV_BIN.parent / "jetstream-node"
     saved: Path = tmp_path / "saved"
     if tools.exists():
         tools.rename(saved)
     try:
-        package: Path = Path(__file__).resolve().parent.parent / "src" / "jetstream" / "node"
+        lockfile: Path = Path(__file__).resolve().parent.parent / "src" / "jetstream" / "node" / "package-lock.json"
         (tools / "node_modules" / ".bin").mkdir(parents=True)
-        shutil.copy(package / "package-lock.json", tools / "package-lock.json")  # as npm ci leaves it when it fails part way
-        (tools / "node_modules" / ".bin" / "lhci").write_text("#!/bin/bash\necho half-installed lhci\n")
-        (tools / "node_modules" / ".bin" / "lhci").chmod(0o755)
+        if left == "copied-lockfile":  # as npm ci leaves it when it fails part way
+            shutil.copy(lockfile, tools / "package-lock.json")
+            (tools / "node_modules" / ".bin" / "lhci").write_text("#!/bin/bash\necho half-installed lhci\n")
+            (tools / "node_modules" / ".bin" / "lhci").chmod(0o755)
+        else:  # a finished install, then lhci deleted
+            shutil.copy(lockfile, tools / "installed.json")
         (repo / "astro.config.mjs").write_text("export default {};\n")
         (repo / "dist").mkdir()
         bin_dir: Path = tmp_path / "bin"
