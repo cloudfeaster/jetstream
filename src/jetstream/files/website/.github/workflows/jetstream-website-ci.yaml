@@ -6,6 +6,10 @@
 # (run-lighthouse.sh). astro check is a pre-commit
 # hook, so it runs in jetstream-lint.yaml; links to other sites are checked
 # every night, in jetstream-website-links.yaml.
+#
+# On main, once the checks pass, it deploys the site to GitHub Pages, but
+# only when the repo's Pages source is "GitHub Actions": until an owner
+# turns that on, nothing is published, and the deploy is skipped.
 name: jetstream website CI
 
 on:  # yamllint disable-line rule:truthy
@@ -27,6 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pages: read  # to see whether Pages deploys from Actions
+    outputs:
+      deploy: ${{ steps.pages.outputs.deploy }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -60,3 +67,48 @@ jobs:
       - name: Check the Lighthouse budgets
         # the runner's Chrome is Google's package, which can use its sandbox
         run: uv run --no-sync run-lighthouse.sh
+
+      - name: See whether to deploy to Pages
+        id: pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 404: Pages isn't enabled
+          if build_type="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq .build_type 2>"${RUNNER_TEMP}/pages.err")"; then
+            :
+          elif grep -q "HTTP 404" "${RUNNER_TEMP}/pages.err"; then
+            build_type=""
+          else
+            cat "${RUNNER_TEMP}/pages.err" >&2
+            exit 1
+          fi
+          if [[ "${build_type}" == "workflow" ]]; then
+            echo "deploy=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::notice::Not deploying: the repo's Pages source isn't \"GitHub Actions\""
+          fi
+
+      - name: Upload the site for Pages
+        if: steps.pages.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        with:
+          path: dist/
+          # dist/ only has what the site puts there, such as .well-known/
+          include-hidden-files: true
+
+  deploy:
+    name: jetstream website deploy
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write  # to deploy to Pages
+      id-token: write  # deploy-pages proves to Pages, with an OIDC token, which run made the artifact
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to Pages
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
