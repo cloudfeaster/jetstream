@@ -6,7 +6,7 @@ Cloudfeaster code may be open-sourced or sold, so nothing Cloudfeaster distribut
 
 Third-party software that's part of a product (linked with it, embedded in it, or distributed with it), whether a direct or a transitive dependency:
 
-- **Allowed**: MIT, Apache-2.0 and the BSD licenses.
+- **Allowed**: MIT, Apache-2.0, the BSD licenses, ISC and 0BSD.
 - **Allowed for a transitive dependency only**: MPL-2.0. It's weak copyleft that only covers changes to that package's own files, not the code that uses it.
 - **Not allowed**: GPL, LGPL and AGPL, in any version, and any license not listed here.
 
