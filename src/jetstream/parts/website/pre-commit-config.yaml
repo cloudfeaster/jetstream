@@ -11,3 +11,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true  # astro check checks the whole project, not only src/
+
+      - id: npm-licenses
+        name: npm licenses (product dependencies)
+        entry: run-npm-licenses.sh
+        language: system
+        pass_filenames: false
+        files: ^package-lock\.json$

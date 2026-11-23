@@ -831,6 +831,41 @@ def test_astro_check_names_a_missing_package(repo: Path, run: Run, missing: str)
     assert f"{missing} isn't in node_modules" in result.stderr
 
 
+# --- npm licenses (website pack)
+
+
+def test_npm_licenses_passes_allowed_product_dependencies(repo: Path, run: Run) -> None:
+    """A lockfile whose product dependencies have allowed licenses passes, whatever its dev dependencies' licenses."""
+    lockfile: dict[str, Any] = {
+        "lockfileVersion": 3,
+        "packages": {
+            "": {"dependencies": {"a": "1.0.0"}, "devDependencies": {"b": "1.0.0"}},
+            "node_modules/a": {"version": "1.0.0", "license": "MIT"},
+            "node_modules/b": {"version": "1.0.0", "license": "GPL-3.0-only", "dev": True},
+        },
+    }
+    add(repo, {"package-lock.json": json.dumps(lockfile)})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-npm-licenses.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_npm_licenses_fails_naming_the_package(repo: Path, run: Run) -> None:
+    """A product dependency with a license licensing.md doesn't allow fails, naming the package and its license."""
+    lockfile: dict[str, Any] = {"lockfileVersion": 3, "packages": {"": {"dependencies": {"a": "1.0.0"}}, "node_modules/a": {"version": "1.0.0", "license": "GPL-3.0-only"}}}
+    add(repo, {"package-lock.json": json.dumps(lockfile)})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-npm-licenses.sh")
+    assert result.returncode == 1
+    assert "node_modules/a 1.0.0: GPL-3.0-only isn't allowed in a direct product dependency" in result.stdout
+    assert "licensing.md" in result.stderr
+
+
+def test_npm_licenses_needs_a_lockfile(repo: Path, run: Run) -> None:
+    """Without package-lock.json, the check fails, saying so."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-npm-licenses.sh")
+    assert result.returncode == 1
+    assert "no package-lock.json" in result.stderr
+
+
 # --- lychee (website pack)
 
 BASE_PAGE: Final[str] = '<html lang="en"><head><title>Home</title></head><body><h1 id="top">Home</h1>{links}</body></html>'

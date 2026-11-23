@@ -9,6 +9,8 @@ The website pack is for a repo that's an [Astro](https://astro.build/) site. The
 
 A package whose code ships to the browser, and so ends up in the built site, goes in `dependencies`. Everything that only builds or checks the site, Astro included, goes in `devDependencies`: under [licensing.md](../core/licensing.md), those are development tools, and the products are the `dependencies`.
 
+The `npm-licenses` hook checks the licenses of what `dependencies` bring in, read from `package-lock.json`, which records each package's license: MIT, Apache-2.0, a BSD license, ISC or 0BSD, or MPL-2.0 for a package that's only there because another needs it. `devDependencies` aren't checked. A package that fails and only builds the site goes in `devDependencies`; one that ships needs replacing, or an exception, which is jetstream's to make.
+
 ## What the pack adds
 
 | File | What it does |
@@ -17,6 +19,8 @@ A package whose code ships to the browser, and so ends up in the built site, goe
 | `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline) |
 | `.github/workflows/jetstream-website-links.yaml` | every night, builds the site and checks every link, links to other sites included (`run-lychee.sh --external`), so a link that stops working fails without anyone pushing |
 | the `astro-check` hook | `astro check` (Astro components, TypeScript and content collections), at every commit, since it checks the whole project |
+| the `npm-licenses` hook | the licenses of the site's product dependencies, the packages in `package-lock.json` that aren't dev dependencies, are ones [licensing.md](../core/licensing.md) allows in a product (`run-npm-licenses.sh`) |
+| `.npmrc` | `npm install` takes no version released in the last 7 days (`min-release-age`, as uv's `exclude-newer`), and saves exact versions |
 | a Dependabot `npm` entry | the site's npm updates, grouped and with core's cooldown |
 | `.gitignore` lines | `node_modules/` and `.astro/` |
 
