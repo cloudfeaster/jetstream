@@ -49,7 +49,7 @@ Website CI checks the built site against jetstream's Lighthouse budgets, the sam
 run-lighthouse.sh
 ```
 
-The reports go in `.lighthouseci/`, an HTML file for each run. The first run installs Lighthouse CI into `.venv`, from the lockfile jetstream ships, so it needs the network once. It also needs Chrome: install Google's package (`google-chrome-stable`), whose AppArmor profile lets Chrome use its sandbox on Ubuntu 23.10 and later, or set `CHROME_PATH` to another Chrome. GitHub's runners have Google's Chrome.
+The reports go in `.lighthouseci/`, an HTML file for each run. The first run installs Lighthouse CI into `.venv`, from the lockfile jetstream ships, so it needs the network once. It also needs Chrome: install Google's package (`google-chrome-stable`), or set `CHROME_PATH` to another Chrome. On Ubuntu 23.10 and later, Chrome can only use its sandbox where an AppArmor profile allows it, and Ubuntu's (`/etc/apparmor.d/chrome`) covers where Google's package installs it, `/opt/google/chrome/`; an unpacked Chrome elsewhere, such as Chrome for Testing, fails with "No usable sandbox!". GitHub's runners have Google's Chrome.
 
 ## Node
 

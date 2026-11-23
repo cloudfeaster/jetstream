@@ -9,8 +9,9 @@
 # Lighthouse CI is jetstream's one Node tool. Its package.json and
 # package-lock.json ship in jetstream, and the first run, or the first after
 # a jetstream release changes them, installs it into .venv with npm ci. It
-# needs Chrome: Google's own package, whose AppArmor profile lets Chrome use
-# its sandbox on Ubuntu 23.10 and later, or any Chrome named by CHROME_PATH.
+# needs Chrome: Google's own package, which installs Chrome where Ubuntu's
+# AppArmor profile (/etc/apparmor.d/chrome) lets it use its sandbox on Ubuntu
+# 23.10 and later, or any Chrome named by CHROME_PATH.
 
 set -euo pipefail
 
