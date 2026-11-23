@@ -103,8 +103,8 @@ jobs:
     if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
+      pages: write  # to deploy to Pages
+      id-token: write  # deploy-pages proves to Pages, with an OIDC token, which run made the artifact
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
