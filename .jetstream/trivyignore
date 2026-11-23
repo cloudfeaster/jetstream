@@ -9,10 +9,3 @@
 #
 #   CVE-2026-12345 exp:2026-12-01  # fixed in foo 1.2.3 (2026-11-26), inside the 7-day cooldown
 
-# basic-ftp 5.3.1, which Lighthouse CI brings in (src/jetstream/node: @lhci/cli >
-# proxy-agent 8.0.2 > pac-proxy-agent > get-uri > basic-ftp), only to fetch a proxy
-# PAC file over FTP. Fixed through proxy-agent 8.0.3 (basic-ftp ^6.2.4, 2026-11-16),
-# inside the 7-day cooldown until 2026-11-23 18:36 UTC.
-CVE-2026-102990 exp:2026-11-30  # basic-ftp 5.3.1, HIGH; fixed in proxy-agent 8.0.3, inside the cooldown
-CVE-2026-126345 exp:2026-11-30  # basic-ftp 5.3.1, MEDIUM; fixed in proxy-agent 8.0.3, inside the cooldown
-CVE-2026-126346 exp:2026-11-30  # basic-ftp 5.3.1, MEDIUM; fixed in proxy-agent 8.0.3, inside the cooldown
