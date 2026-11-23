@@ -79,12 +79,24 @@ def allows(expression: str, allowed: frozenset[str]) -> bool:
     return result and position == len(words)
 
 
+def installed_path(packages: dict[str, dict[str, Any]], owner: str, name: str) -> str | None:
+    """Return where in ``packages`` the dependency ``name`` of the package at ``owner`` is installed, found as Node finds it: in the nearest node_modules/ at or above ``owner``."""
+    folder: str = owner
+    while True:
+        candidate: str = f"{folder}/node_modules/{name}" if folder else f"node_modules/{name}"
+        if candidate in packages:
+            return candidate
+        if not folder:
+            return None
+        folder = folder.rpartition("/")[0]
+
+
 def failures(lockfile: dict[str, Any]) -> list[str]:
     """Return a line for each product dependency in ``lockfile`` whose license isn't allowed."""
     packages: dict[str, dict[str, Any]] = lockfile.get("packages", {})
     # the repo's own packages, the root and any workspaces, are the ones with no node_modules/ in their path
-    own: list[dict[str, Any]] = [package for path, package in packages.items() if "node_modules/" not in path]
-    direct: set[str] = {f"node_modules/{name}" for package in own for key in ("dependencies", "optionalDependencies") for name in package.get(key, {})}
+    own: dict[str, dict[str, Any]] = {path: package for path, package in packages.items() if "node_modules/" not in path}
+    direct: set[str] = {installed for path, package in own.items() for key in ("dependencies", "optionalDependencies") for name in package.get(key, {}) if (installed := installed_path(packages, path, name)) is not None}
     found: list[str] = []
     for path, package in packages.items():
         # the repo's own workspace packages have no node_modules/ in their path, and a link points at one

@@ -68,11 +68,24 @@ def test_only_product_dependencies_are_checked() -> None:
     assert npm_licenses.failures(data) == ["node_modules/optional 1.0.0: LGPL-3.0-or-later isn't allowed in a transitive product dependency"]
 
 
-def test_a_workspaces_own_dependency_is_direct() -> None:
-    """A dependency that one of the repo's workspace packages declares is direct, like one the root declares, so MPL-2.0 isn't allowed in it."""
-    data: dict[str, Any] = lockfile({}, {"b": {"version": "2.0.0", "license": "MPL-2.0"}})
+@pytest.mark.parametrize(
+    ("installed", "path"),
+    [(False, "node_modules/b"), (True, "packages/site/node_modules/b")],
+    ids=["hoisted", "nested"],
+)
+def test_a_workspaces_own_dependency_is_direct(installed: bool, path: str) -> None:  # noqa: FBT001 (a parametrized case)
+    """A dependency that one of the repo's workspace packages declares is direct, where npm installed it, so MPL-2.0 isn't allowed in it."""
+    data: dict[str, Any] = lockfile({"b": "1.0.0"} if installed else {}, {"b": {"version": "1.0.0", "license": "MIT"}})
     data["packages"]["packages/site"] = {"version": "1.0.0", "dependencies": {"b": "2.0.0"}}
-    assert npm_licenses.failures(data) == ["node_modules/b 2.0.0: MPL-2.0 isn't allowed in a direct product dependency"]
+    data["packages"][path] = {"version": "2.0.0", "license": "MPL-2.0"}
+    assert npm_licenses.failures(data) == [f"{path} 2.0.0: MPL-2.0 isn't allowed in a direct product dependency"]
+
+
+def test_a_nested_copy_only_another_package_needs_is_transitive() -> None:
+    """A copy of a package nested under another dependency is that dependency's, so it's transitive, even when the root declares the package too."""
+    data: dict[str, Any] = lockfile({"a": "1.0.0", "b": "1.0.0"}, {"a": {"version": "1.0.0", "license": "MIT"}, "b": {"version": "1.0.0", "license": "MIT"}})
+    data["packages"]["node_modules/a/node_modules/b"] = {"version": "2.0.0", "license": "MPL-2.0"}
+    assert npm_licenses.failures(data) == []
 
 
 @pytest.mark.parametrize("license_", [None, ["MIT"]], ids=["missing", "not-a-string"])
