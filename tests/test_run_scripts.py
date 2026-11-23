@@ -6,6 +6,7 @@ to check that each one finds the tools installed next to it.
 
 import functools
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -870,7 +871,7 @@ def test_lighthouse_checks_the_budgets_under_the_base(repo: Path, page: str, *, 
     result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the test's own arguments)
         [str(VENV_BIN / "run-lighthouse.sh")],
         cwd=repo,
-        env={"PATH": f"{VENV_BIN}:/usr/bin:/bin", "HOME": str(repo.parent), "CHROME_PATH": str(CHROME)},
+        env={"PATH": f"{VENV_BIN}:{os.environ['PATH']}", "HOME": str(repo.parent), "CHROME_PATH": str(CHROME)},  # Node and npm, wherever setup-node put them
         capture_output=True,
         text=True,
         check=False,
