@@ -2,7 +2,8 @@
 # Written by `jetstream sync` (website pack); don't edit.
 #
 # Builds the site, to prove it still builds, then checks the links between
-# its pages and files (run-lychee.sh, offline). astro check is a pre-commit
+# its pages and files (run-lychee.sh, offline) and the Lighthouse budgets
+# (run-lighthouse.sh). astro check is a pre-commit
 # hook, so it runs in jetstream-lint.yaml; links to other sites are checked
 # every night, in jetstream-website-links.yaml.
 name: jetstream website CI
@@ -55,3 +56,7 @@ jobs:
 
       - name: Check the site's links
         run: uv run --no-sync run-lychee.sh
+
+      - name: Check the Lighthouse budgets
+        # the runner's Chrome is Google's package, which can use its sandbox
+        run: uv run --no-sync run-lighthouse.sh

@@ -103,6 +103,23 @@ def test_read_packs_puts_packs_in_order(repo: Path) -> None:
     assert sync.read_packs(repo) == ("core", "python", "website", "public")
 
 
+def test_only_jetstream_gets_its_own_pack(repo: Path) -> None:
+    """The jetstream repo itself gets its own pack too, after the others, with Dependabot updates for its Node tools; no other repo does."""
+    assert sync.SELF_PACK not in sync.read_packs(repo)
+    (repo / "pyproject.toml").write_text(PYPROJECT.replace('name = "example"', 'name = "cloudfeaster-jetstream"'))
+    packs: tuple[str, ...] = sync.read_packs(repo)
+    assert packs == ("core", sync.SELF_PACK)
+    dependabot: dict[str, Any] = yaml.safe_load(sync.expected(packs).files[".github/dependabot.yml"].content)
+    assert [(update["package-ecosystem"], update["directory"]) for update in dependabot["updates"]] == [("uv", "/"), ("github-actions", "/"), ("npm", "/src/jetstream/node")]
+
+
+def test_a_repo_cant_name_jetstreams_own_pack(repo: Path) -> None:
+    """The pack only jetstream gets isn't one a repo can ask for."""
+    (repo / "pyproject.toml").write_text(PYPROJECT.replace('["core"]', f'["core", "{sync.SELF_PACK}"]'))
+    with pytest.raises(sync.SyncError, match="unknown pack"):
+        sync.read_packs(repo)
+
+
 def test_read_packs_needs_a_pyproject(tmp_path: Path) -> None:
     """A repo with no pyproject.toml is an error."""
     with pytest.raises(sync.SyncError, match=r"no pyproject.toml"):
@@ -208,7 +225,7 @@ def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
     assert hooks["repos"][0]["hooks"][-2]["always_run"]  # astro check checks the whole project, wherever a commit changes it
     dependabot: dict[str, Any] = yaml.safe_load(want.files[".github/dependabot.yml"].content)
     assert [update["package-ecosystem"] for update in dependabot["updates"]] == ["uv", "github-actions", "npm"]
-    assert want.gitignore_block.splitlines()[-3:] == ["node_modules/", ".astro/", sync.GITIGNORE_END]
+    assert want.gitignore_block.splitlines()[-4:] == ["node_modules/", ".astro/", ".lighthouseci/", sync.GITIGNORE_END]
 
 
 # --- sync, then check
