@@ -16,13 +16,13 @@ The `npm-licenses` hook checks the licenses of what `dependencies` bring in, rea
 | File | What it does |
 |---|---|
 | `.nvmrc` | the Node version, for local setup and every workflow |
-| `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline) |
+| `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline), and the Lighthouse budgets (`run-lighthouse.sh`) |
 | `.github/workflows/jetstream-website-links.yaml` | every night, builds the site and checks every link, links to other sites included (`run-lychee.sh --external`), so a link that stops working fails without anyone pushing |
 | the `astro-check` hook | `astro check` (Astro components, TypeScript and content collections), at every commit, since it checks the whole project |
 | the `npm-licenses` hook | the licenses of the site's product dependencies, the packages in `package-lock.json` that aren't dev dependencies, are ones [licensing.md](../core/licensing.md) allows in a product (`run-npm-licenses.sh`) |
 | `.npmrc` | `npm install` takes no version released in the last 7 days (`min-release-age`, as uv's `exclude-newer`), and saves exact versions |
 | a Dependabot `npm` entry | the site's npm updates, grouped and with core's cooldown |
-| `.gitignore` lines | `node_modules/` and `.astro/` |
+| `.gitignore` lines | `node_modules/`, `.astro/` and `.lighthouseci/` |
 
 Locally, `cfg4dev.sh` runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node when the repo has an `.nvmrc`, and runs `npm ci` when it has a `package-lock.json` too, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
 
@@ -40,6 +40,16 @@ run-lychee.sh --external  # and links to other sites
 ```
 
 A link to another site that's right but can't be checked, because the site blocks link checkers, say, goes in the repo's `.lycheeignore`, one regular expression per line, which lychee reads.
+
+## Lighthouse
+
+Website CI checks the built site against jetstream's Lighthouse budgets, the same for every site (decision 25 in jetstream's #1): performance at least 0.90, and accessibility, best practices and SEO at least 0.95. `run-lighthouse.sh` serves `dist/` under the site's `base`, as it's deployed, and runs Lighthouse 3 times on each of up to 5 pages, the shallowest first; a category's median score must meet its budget. A budget that's wrong for every site is a change to jetstream. To run it yourself, after `astro build`:
+
+```bash
+run-lighthouse.sh
+```
+
+The reports go in `.lighthouseci/`, an HTML file for each run. The first run installs Lighthouse CI into `.venv`, from the lockfile jetstream ships, so it needs the network once. It also needs Chrome: install Google's package (`google-chrome-stable`), whose AppArmor profile lets Chrome use its sandbox on Ubuntu 23.10 and later, or set `CHROME_PATH` to another Chrome. GitHub's runners have Google's Chrome.
 
 ## Node
 

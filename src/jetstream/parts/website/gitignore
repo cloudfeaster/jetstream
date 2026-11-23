@@ -1,3 +1,4 @@
 # Node and Astro (website pack); Astro builds into dist/, which is above
 node_modules/
 .astro/
+.lighthouseci/

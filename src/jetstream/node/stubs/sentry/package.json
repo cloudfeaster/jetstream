@@ -1,0 +1,7 @@
+{
+  "name": "sentry",
+  "version": "0.0.0-jetstream-stub",
+  "private": true,
+  "description": "An empty stand-in for Sentry's CLI (FSL-1.1-Apache-2.0, not open source), which Lighthouse's error reporting brings in but Lighthouse CI never runs. It has no code, so anything that does try to load it fails.",
+  "license": "MIT"
+}

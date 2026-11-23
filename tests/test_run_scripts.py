@@ -831,6 +831,55 @@ def test_astro_check_names_a_missing_package(repo: Path, run: Run, missing: str)
     assert f"{missing} isn't in node_modules" in result.stderr
 
 
+# --- Lighthouse (website pack)
+
+GOOD_PAGE: Final[str] = (
+    '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+    '<title>Home</title><meta name="description" content="A page that meets every budget."></head>'
+    "<body><main><h1>Home</h1><p>Nothing here but text.</p></main></body></html>"
+)
+CHROME: Final[str | None] = next((found for name in ("google-chrome-stable", "google-chrome") if (found := shutil.which(name))), None)
+
+
+def test_lighthouse_needs_a_built_site(repo: Path, run: Run) -> None:
+    """Without dist/, the script says to build the site first."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lighthouse.sh")
+    assert result.returncode == 1
+    assert "no dist/: build the site first" in result.stderr
+
+
+def test_lighthouse_rejects_arguments(repo: Path, run: Run) -> None:
+    """The script takes no arguments."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lighthouse.sh", "--fast")
+    assert result.returncode == 1
+    assert "usage: run-lighthouse.sh" in result.stderr
+
+
+@pytest.mark.integration  # installs Lighthouse CI from jetstream's lockfile, and runs Chrome
+@pytest.mark.skipif(CHROME is None, reason="needs Google's Chrome, as GitHub's runners have")
+@pytest.mark.parametrize(
+    ("page", "passes"),
+    [(GOOD_PAGE, True), ("<html><body><p>No title, language or description.</p></body></html>", False)],
+    ids=["meets-the-budgets", "misses-them"],
+)
+def test_lighthouse_checks_the_budgets_under_the_base(repo: Path, page: str, *, passes: bool) -> None:
+    """Lighthouse audits the built site, served under its base, and fails a page that misses a budget."""
+    (repo / "astro.config.mjs").write_text('export default {"site": "https://example.org", "base": "/docs"};\n')
+    (repo / "dist").mkdir()
+    (repo / "dist" / "index.html").write_text(page)
+    result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the test's own arguments)
+        [str(VENV_BIN / "run-lighthouse.sh")],
+        cwd=repo,
+        env={"PATH": f"{VENV_BIN}:/usr/bin:/bin", "HOME": str(repo.parent), "CHROME_PATH": str(CHROME)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert "http://localhost:" in result.stdout + result.stderr  # Lighthouse CI's own server
+    assert "/docs/" in result.stdout + result.stderr
+    assert (result.returncode == 0) is passes, result.stdout + result.stderr
+
+
 # --- npm licenses (website pack)
 
 

@@ -35,6 +35,16 @@ bin/update-binary.py <tool> <version>   # a named version, even inside the coold
 
 It updates the version and every platform's SHA-256 in `binaries.toml`, after checking GitHub's digests against the checksums file the project publishes. Commit it as a `fix:`, so the bump is released.
 
+## Keeping the Node tools current
+
+The website pack's one Node tool, Lighthouse CI, is in `src/jetstream/node/`: its `package.json` and `package-lock.json` ship in the wheel, and `run-lighthouse.sh` installs them into `.venv` with `npm ci`. Dependabot updates them, through an npm entry only jetstream's `dependabot.yml` has (jetstream's own pack, `parts/jetstream/`, which `jetstream sync` adds when the project is jetstream). To change them by hand, in `src/jetstream/node/`:
+
+```bash
+npm install --package-lock-only --ignore-scripts --min-release-age=7 --save-exact @lhci/cli@<version>
+```
+
+`overrides` replaces Sentry's CLI (`sentry`), which Lighthouse's error reporting brings in, with an empty package of jetstream's own (`stubs/sentry/`): its license, FSL-1.1-Apache-2.0, isn't open source. A package that does the same in future goes the same way, or Lighthouse CI waits.
+
 ## Keeping the uv floor current
 
 Every repo gets its uv floor from core's `[tool.uv] required-version` (`src/jetstream/parts/core/pyproject.toml`). It's a floor (`>=`), not a pin: uv refuses to run below it, locally and in CI (`astral-sh/setup-uv` reads it), and `cfg4dev.sh`'s `uv self update` keeps everyone above it without anyone bumping a pin.
@@ -51,6 +61,7 @@ To change it, edit `required-version` in core's part, run `jetstream sync` (jets
 Every tool jetstream installs is a development tool, so it may have any open-source license except that an AGPL one needs a review first ([licensing.md](src/jetstream/docs/core/licensing.md#development-tools)). `tests/test_dev_tool_licenses.py` checks:
 
 - **every Python package** that a pack's extra installs, with its dependencies, using the license licensecheck reads from its installed metadata;
+- **every Node package** in `src/jetstream/node/package-lock.json`, by its SPDX license ID, against a list of the open-source ones (`NODE_OPEN_SOURCE`); licensecheck isn't used for them, because it reads `FSL-1.1-Apache-2.0` as Apache;
 - **every binary** in `binaries.toml`, by its `license`. The `binary pins` workflow's `bin/update-binary.py --check` fails if GitHub reports a different license for the tool's repo;
 - **what's bundled inside a package**, under a license of its own, which no metadata shows. It's recorded by hand in `dev-tool-licenses.toml`'s `[bundled]`, such as the GPL ShellCheck binary in `shellcheck-py`'s wheels.
 

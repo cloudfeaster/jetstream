@@ -1,0 +1,23 @@
+---
+# Only jetstream itself gets this pack (sync.read_packs): its own Node tools,
+# Lighthouse CI, in src/jetstream/node. `jetstream sync` appends what follows
+# the marker to the earlier packs' updates list; the lines above it make this
+# file valid YAML.
+version: 2
+updates:
+  # >>> jetstream: appended
+  - package-ecosystem: "npm"
+    directory: "/src/jetstream/node"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
