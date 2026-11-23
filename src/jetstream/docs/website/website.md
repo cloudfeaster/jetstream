@@ -22,6 +22,10 @@ A package whose code ships to the browser, and so ends up in the built site, goe
 
 Locally, `cfg4dev.sh` runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node when the repo has an `.nvmrc`, and runs `npm ci` when it has a `package-lock.json` too, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
 
+## Licenses
+
+A site's text and logo usually need other terms than its code. The files that hold them, `LICENSE-docs` for the Markdown and MDX in `src/content/` and `TRADEMARKS.md` for brand assets, are in [licensing.md](../core/licensing.md#the-repos-own-licenses). A page's text in a `.astro` file is code, under `LICENSE`.
+
 ## Links
 
 [lychee](https://lychee.cli.rs/) checks the links in the built site, `dist/`, as the deployed site would resolve them: `run-lychee.sh` reads `site` and `base` from the Astro config, so a link to `/<base>/about/`, or to `<site>/<base>/about/`, is checked against `dist/about/index.html`. The links in a web app manifest (a `*.webmanifest` or `manifest.json` in `dist/`: its `start_url`, `icons`, `screenshots` and `shortcuts`) are checked too, resolved against the manifest's own URL, as a browser resolves them; lychee reports a broken one under `<manifest>.html` in a temporary folder, at the file's local path. Pull requests only check the site's own links, so another site's outage or rate limit can't fail one; the nightly run checks the rest. To check them yourself, after `astro build`:
