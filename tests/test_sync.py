@@ -177,7 +177,7 @@ def test_public_pack_adds_coderabbit_config() -> None:
     assert config["reviews"] == {
         "profile": "chill",
         "high_level_summary": True,
-        "auto_review": {"ignore_usernames": ["cloudfeaster-release[bot]"]},
+        "auto_review": {"ignore_usernames": ["cloudfeaster-release[bot]", "dependabot[bot]"]},
     }
 
 
