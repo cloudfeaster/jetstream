@@ -856,6 +856,35 @@ def test_lighthouse_rejects_arguments(repo: Path, run: Run) -> None:
     assert "usage: run-lighthouse.sh" in result.stderr
 
 
+def test_lighthouse_redoes_an_install_that_didnt_finish(repo: Path, system_path: str, tmp_path: Path) -> None:
+    """An install that npm ci didn't finish isn't taken for a finished one: the next run installs again."""
+    tools: Path = VENV_BIN.parent / "jetstream-node"
+    saved: Path = tmp_path / "saved"
+    if tools.exists():
+        tools.rename(saved)
+    try:
+        package: Path = Path(__file__).resolve().parent.parent / "src" / "jetstream" / "node"
+        (tools / "node_modules" / ".bin").mkdir(parents=True)
+        shutil.copy(package / "package-lock.json", tools / "package-lock.json")  # as npm ci leaves it when it fails part way
+        (tools / "node_modules" / ".bin" / "lhci").write_text("#!/bin/bash\necho half-installed lhci\n")
+        (tools / "node_modules" / ".bin" / "lhci").chmod(0o755)
+        (repo / "astro.config.mjs").write_text("export default {};\n")
+        (repo / "dist").mkdir()
+        bin_dir: Path = tmp_path / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "npm").write_text('#!/bin/bash\necho "fake npm $*"; exit 1\n')  # npm ci, attempted again, then failing offline
+        (bin_dir / "npm").chmod(0o755)
+        result: subprocess.CompletedProcess[str] = run_script(f"{bin_dir}:{system_path}", repo, "run-lighthouse.sh")
+        assert "fake npm ci" in result.stdout
+        assert "half-installed lhci" not in result.stdout
+        assert result.returncode == 1
+        assert not (tools / "installed.json").exists()
+    finally:
+        shutil.rmtree(tools, ignore_errors=True)
+        if saved.exists():
+            saved.rename(tools)
+
+
 @pytest.mark.integration  # installs Lighthouse CI from jetstream's lockfile, and runs Chrome
 @pytest.mark.skipif(CHROME is None, reason="needs Google's Chrome, as GitHub's runners have")
 @pytest.mark.parametrize(

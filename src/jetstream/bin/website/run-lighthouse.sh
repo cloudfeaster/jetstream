@@ -34,15 +34,18 @@ fi
 site_and_base="$(run-astro-config.sh)"
 base="$(sed -n 2p <<< "${site_and_base}")"
 
-# Lighthouse CI, from jetstream's lockfile, into .venv/jetstream-node
+# Lighthouse CI, from jetstream's lockfile, into .venv/jetstream-node. The
+# lockfile is copied to installed.json only once npm ci has finished, so an
+# install that fails part way is redone on the next run.
 package="$("${bin_dir}/python" -c 'import importlib.resources; print(importlib.resources.files("jetstream") / "node")')"
 tools="${bin_dir}/../jetstream-node"
-if ! cmp -s "${package}/package-lock.json" "${tools}/package-lock.json" || [[ ! -x "${tools}/node_modules/.bin/lhci" ]]; then
+if ! cmp -s "${package}/package-lock.json" "${tools}/installed.json"; then
     rm -rf "${tools}"
     mkdir -p "${tools}"
     cp -R "${package}/package.json" "${package}/package-lock.json" "${package}/stubs" "${tools}/"
     # No package in the lockfile has an install script, so none is run.
     npm ci --prefix "${tools}" --ignore-scripts --no-audit --no-fund --loglevel=error
+    cp "${package}/package-lock.json" "${tools}/installed.json"
 fi
 
 # Lighthouse CI's server serves --collect.staticDistDir, so dist/ goes where
