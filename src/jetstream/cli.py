@@ -59,7 +59,7 @@ def run_check(root: Path) -> int:
 # What new-repo leaves to do, after it writes the files.
 NEXT_STEPS: Final[str] = """
 Next, in this repo:
-  1. source cfg4dev.sh            # uv sync (writes uv.lock), installs the tools and the pre-commit hooks
+  1. source cfg4dev.sh            # uv sync (writes uv.lock; a website gets package-lock.json too), installs the tools and the pre-commit hooks
   2. pre-commit run --all-files
   3. commit on a branch and open a pull request (.jetstream/docs/core/dev-workflow.md)
 

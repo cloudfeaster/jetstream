@@ -1,0 +1,20 @@
+---
+const title = "$name";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={title} />
+    <!-- no icon yet: without this, browsers ask for a favicon.ico that isn't there -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main>
+      <h1>{title}</h1>
+    </main>
+  </body>
+</html>

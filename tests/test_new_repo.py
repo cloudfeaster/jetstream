@@ -1,5 +1,6 @@
 """Tests for ``jetstream new-repo``."""
 
+import json
 import tomllib
 from importlib.metadata import version
 from pathlib import Path
@@ -27,7 +28,7 @@ def pyproject_of(repo: Path) -> dict[str, Any]:
     return tomllib.loads((repo / "pyproject.toml").read_text())
 
 
-@pytest.mark.parametrize("packs", [("core",), ("core", "python")])
+@pytest.mark.parametrize("packs", [("core",), ("core", "python"), ("core", "website"), ("core", "python", "website")])
 def test_new_repo_passes_check(empty: Path, packs: tuple[str, ...]) -> None:
     """A new repo has every file jetstream owns, so ``jetstream check`` passes straight away."""
     new_repo.new_repo(empty, DESCRIPTION, packs)
@@ -64,6 +65,20 @@ def test_python_repo_is_a_package(empty: Path) -> None:
     assert "- [python.md](.jetstream/docs/python/python.md): Python\n" in (empty / "CONTRIBUTING.md").read_text()
 
 
+def test_website_repo_is_an_astro_site_with_nothing_that_ships(empty: Path) -> None:
+    """A website repo is an Astro site, deployed under its name, whose npm packages are all exact-pinned development tools."""
+    new_repo.new_repo(empty, DESCRIPTION, ("website",))
+    package: dict[str, Any] = json.loads((empty / "package.json").read_text())
+    assert set(package["devDependencies"]) == {"@astrojs/check", "astro", "typescript"}
+    assert all(pin[0].isdigit() for pin in package["devDependencies"].values())
+    assert "dependencies" not in package
+    config: str = (empty / "astro.config.mjs").read_text()
+    assert 'base: "/my-repo"' in config
+    assert 'trailingSlash: "always"' in config
+    assert 'const title = "my-repo";' in (empty / "src" / "pages" / "index.astro").read_text()
+    assert pyproject_of(empty)["tool"]["uv"]["package"] is False
+
+
 def test_hatchling_pin_matches_jetstreams_own() -> None:
     """A new python repo starts on the hatchling jetstream itself builds with."""
     starter: dict[str, Any] = tomllib.loads((ROOT / "src" / "jetstream" / "starters" / "python" / "pyproject.toml").read_text())
@@ -73,7 +88,7 @@ def test_hatchling_pin_matches_jetstreams_own() -> None:
 
 def test_starters_are_filled_in() -> None:
     """Every placeholder in the starters, paths included, is filled in."""
-    files: dict[str, str] = new_repo.starter_files("a-repo", DESCRIPTION, ("core", "python"))
+    files: dict[str, str] = new_repo.starter_files("a-repo", DESCRIPTION, ("core", "python", "website"))
     assert "a_repo/__init__.py" in files
     assert all("$" not in path + text for path, text in files.items())
 
@@ -99,7 +114,6 @@ def test_new_repo_writes_nothing_into_a_repo_that_has_files(empty: Path) -> None
 @pytest.mark.parametrize(
     ("description", "packs", "name", "message"),
     [
-        (DESCRIPTION, ("core", "website"), None, "the website pack isn't ready"),
         (" ", ("core",), None, "description can't be empty"),
         (DESCRIPTION, ("core",), "bad name", "isn't a valid project name"),
         (DESCRIPTION, ("core", "python"), "1st-repo", "can't be a Python package name"),
@@ -109,6 +123,15 @@ def test_new_repo_rejects_bad_inputs(empty: Path, description: str, packs: tuple
     """new-repo explains, in one line, why it can't start the repo."""
     with pytest.raises(new_repo.NewRepoError, match=message):
         new_repo.new_repo(empty, description, packs, name=name)
+    assert [path.name for path in empty.iterdir()] == [".git"]
+
+
+def test_new_repo_rejects_a_pack_without_starters(empty: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A pack can't start a repo until it has starters."""
+    (tmp_path / "starters" / "core").mkdir(parents=True)
+    monkeypatch.setattr(new_repo, "STARTERS", tmp_path / "starters")
+    with pytest.raises(new_repo.NewRepoError, match="the website pack isn't ready for new repos yet"):
+        new_repo.new_repo(empty, DESCRIPTION, ("core", "website"))
     assert [path.name for path in empty.iterdir()] == [".git"]
 
 
@@ -126,8 +149,8 @@ def test_cli_new_repo_prints_what_it_wrote_and_the_next_steps(empty: Path, monke
 def test_cli_new_repo_reports_an_error(empty: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     """``jetstream new-repo`` reports a problem in one line, with the error exit status."""
     monkeypatch.chdir(empty)
-    assert cli.main(["new-repo", "--description", DESCRIPTION, "--pack", "website"]) == cli.EXIT_ERROR
-    assert capsys.readouterr().err == "*** jetstream: the website pack isn't ready for new repos yet\n"
+    assert cli.main(["new-repo", "--description", " "]) == cli.EXIT_ERROR
+    assert capsys.readouterr().err == "*** jetstream: the description can't be empty\n"
 
 
 def test_cli_new_repo_needs_a_description() -> None:

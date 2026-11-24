@@ -21,6 +21,8 @@ import pytest
 
 from jetstream import new_repo, sync
 
+from .test_run_scripts import CHROME
+
 pytestmark = pytest.mark.integration  # uv sync, and the hooks that use the network
 
 ROOT: Final[Path] = Path(__file__).resolve().parent.parent
@@ -72,7 +74,7 @@ def release(tmp_path_factory: pytest.TempPathFactory) -> Release:
 
 @pytest.mark.parametrize("packs", MATRIX, ids=["+".join(("core", *packs)) for packs in MATRIX])
 def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: tuple[str, ...]) -> None:
-    """A new repo installs jetstream and its tools, and passes ``jetstream check`` and every hook."""
+    """A new repo installs jetstream and its tools, and passes ``jetstream check`` and every hook; a site also passes website CI's checks."""
     repo: Path = tmp_path / "my-repo"
     repo.mkdir()
     run(repo, release.env, "git", "init", "--quiet", "--initial-branch", "main")
@@ -83,5 +85,15 @@ def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: t
     locked: list[dict[str, Any]] = tomllib.loads((repo / "uv.lock").read_text())["package"]
     assert next(package["source"] for package in locked if package["name"] == new_repo.DISTRIBUTION) == {"git": f"{URL}?tag={TAG}#{release.commit}"}  # this working tree
     run(repo, release.env, "uv", "run", "--no-sync", "jetstream", "check")
+    if "website" in packs:  # as cfg4dev.sh does
+        run(repo, release.env, "npm", "install", "--package-lock-only")
+        run(repo, release.env, "npm", "ci")
     run(repo, release.env, "git", "add", "--all")
     run(repo, release.env, "uv", "run", "--no-sync", "pre-commit", "run", "--all-files")
+    if "website" in packs:
+        run(repo, release.env, "node_modules/.bin/astro", "build")
+        run(repo, release.env, "uv", "run", "--no-sync", "run-lychee.sh")
+    if packs == ("website",):  # once, as it's slow and the site is the same
+        if CHROME is None:
+            pytest.skip("everything but Lighthouse passed: it needs Google's Chrome, as GitHub's runners have")
+        run(repo, release.env, "uv", "run", "--no-sync", "run-lighthouse.sh")
