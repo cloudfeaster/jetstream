@@ -8,7 +8,7 @@ The public pack's part of `jetstream-ship`: in a public repo, CodeRabbit reviews
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/<number>/comments --paginate   # inline findings, and replies in their threads
-gh api repos/{owner}/{repo}/pulls/<number>/reviews               # each review's body: nitpicks, and findings outside the diff
+gh api repos/{owner}/{repo}/pulls/<number>/reviews --paginate    # each review's body: nitpicks, and findings outside the diff
 gh pr view <number> --comments                                    # the summary, and "No actionable comments" when there are none
 ```
 
@@ -37,7 +37,7 @@ A finding in a review's body has no thread: answer them all in one pull request 
 
 ## 4. Loop while there are fixes
 
-CodeRabbit reviews each push again. After pushing a fix, go back to step 1 and wait for the new review, which may answer the replies or raise new findings.
+CodeRabbit reviews each push again, unless it doesn't review the pull request automatically (`.jetstream/docs/public/coderabbit.md` says which) or it has paused, as it does after 5 reviewed commits. Then ask for the review: `gh pr comment <number> --body '@coderabbitai review'`. After pushing a fix, go back to step 1 and wait for the new review, which may answer the replies or raise new findings.
 
 - **Batch the fixes** from one review into one push: CodeRabbit reviews about 10 times an hour, at most.
 - **After about 3 rounds**, stop and ask the user whether to keep going, rather than looping on.
