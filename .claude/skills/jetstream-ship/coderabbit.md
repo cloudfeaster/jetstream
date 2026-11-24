@@ -6,7 +6,12 @@ The public pack's part of `jetstream-ship`: in a public repo, CodeRabbit reviews
 
 How to wait depends on whether CodeRabbit reviews the pull request automatically (`.jetstream/docs/public/coderabbit.md` says which it doesn't):
 
-- **It does:** `gh pr checks <number> --watch` waits for the `CodeRabbit` check too.
+- **It does:** `gh pr checks <number> --watch` waits for the `CodeRabbit` check too. Then see how it ended:
+
+    ```bash
+    gh api "repos/{owner}/{repo}/commits/<head-sha>/check-runs?check_name=CodeRabbit" --jq '.check_runs[] | [.conclusion, .output.title] | @tsv'
+    ```
+
 - **It doesn't:** ask for the review, and note when:
 
     ```bash
@@ -19,9 +24,9 @@ How to wait depends on whether CodeRabbit reviews the pull request automatically
     gh api "repos/{owner}/{repo}/commits/<head-sha>/check-runs?check_name=CodeRabbit" --jq '.check_runs[] | select(.completed_at > "<asked-at>") | [.conclusion, .output.title] | @tsv'
     ```
 
-When you asked: if CodeRabbit replies that it already reviewed the commit, no new check comes: read that review. If it replies that it can't review, or the check says `skipped`, there's no review: tell the user.
+Unless that's `success` and `Finished`, the commit wasn't reviewed, even though the check may count as passing (a skipped or rate-limited review does): tell the user. When you asked, if CodeRabbit replies that it already reviewed the commit, no new check comes: read that review. If it replies that it can't review, tell the user.
 
-The check passes whatever CodeRabbit found, so read what it posted:
+A finished check passes whatever CodeRabbit found, so read what it posted:
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/<number>/comments --paginate   # inline findings, and replies in their threads
