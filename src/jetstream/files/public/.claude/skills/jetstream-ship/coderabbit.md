@@ -4,7 +4,21 @@ The public pack's part of `jetstream-ship`: in a public repo, CodeRabbit reviews
 
 ## 1. Wait for the review, then read it
 
-`gh pr checks <number> --watch` waits for the `CodeRabbit` check too. The check passes whatever CodeRabbit found, so read what it posted:
+If CodeRabbit doesn't review the pull request automatically (`.jetstream/docs/public/coderabbit.md` says which), ask for a review now:
+
+```bash
+gh api repos/{owner}/{repo}/issues/<number>/comments -f body='@coderabbitai review' --jq .created_at  # when it was asked for
+```
+
+`gh pr checks <number> --watch` waits for the `CodeRabbit` check too, but when you asked for the review, the check from before may already be complete. Wait instead until this prints a line, which it does once a check finishes after you asked:
+
+```bash
+gh api "repos/{owner}/{repo}/commits/<head-sha>/check-runs?check_name=CodeRabbit" --jq '.check_runs[] | select(.completed_at > "<asked-at>") | [.conclusion, .output.title] | @tsv'
+```
+
+If CodeRabbit replies that it already reviewed the commit, no new check comes: read that review. If it replies that it can't review, or the check says `skipped`, there's no review: tell the user.
+
+The check passes whatever CodeRabbit found, so read what it posted:
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/<number>/comments --paginate   # inline findings, and replies in their threads
@@ -37,7 +51,7 @@ A finding in a review's body has no thread: answer them all in one pull request 
 
 ## 4. Loop while there are fixes
 
-CodeRabbit reviews each push again, unless it doesn't review the pull request automatically (`.jetstream/docs/public/coderabbit.md` says which) or it has paused, as it does after 5 reviewed commits. Then ask for the review: `gh pr comment <number> --body '@coderabbitai review'`. After pushing a fix, go back to step 1 and wait for the new review, which may answer the replies or raise new findings.
+CodeRabbit reviews each push again, unless it doesn't review the pull request automatically or it has paused, as it does after 5 reviewed commits. Then ask for the review, as in step 1. After pushing a fix, go back to step 1 and wait for the new review, which may answer the replies or raise new findings.
 
 - **Batch the fixes** from one review into one push: CodeRabbit reviews about 10 times an hour, at most.
 - **After about 3 rounds**, stop and ask the user whether to keep going, rather than looping on.
