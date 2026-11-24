@@ -24,7 +24,7 @@ The `npm-licenses` hook checks the licenses of what `dependencies` bring in, rea
 | a Dependabot `npm` entry | the site's npm updates, grouped and with core's cooldown |
 | `.gitignore` lines | `node_modules/`, `.astro/` and `.lighthouseci/` |
 
-Locally, `cfg4dev.sh` runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node when the repo has an `.nvmrc`, and runs `npm ci` when it has a `package-lock.json` too, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
+Locally, `cfg4dev.sh` writes `package-lock.json` if there isn't one (`npm install --package-lock-only`), and runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node when the repo has an `.nvmrc`, and runs `npm ci` when it has a `package-lock.json` too, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
 
 ## Licenses
 
@@ -59,7 +59,22 @@ Website CI deploys the site to [GitHub Pages](https://docs.github.com/en/pages) 
 1. In the repo's Settings → Pages, set the source to "GitHub Actions", and add the custom domain, if it has one. GitHub creates the `github-pages` environment, which only `main` can deploy to.
 1. Run website CI on `main` (`gh workflow run jetstream-website-ci.yaml`), or push to it.
 
-To stop publishing, an owner turns Pages off: in Settings → Pages, sets the source to "Deploy from a branch" with the branch `None`, or runs `gh api -X DELETE repos/<owner>/<repo>/pages`. Unpublishing the site isn't enough: the source stays "GitHub Actions", so the next run on `main` publishes it again. A private repo's site is public, as any Pages site is. Pull requests get no preview: build the site and look at it locally (`astro build`, then `astro preview`).
+To stop publishing, an owner turns Pages off: in Settings → Pages, sets the source to "Deploy from a branch" with the branch `None`, or runs `gh api -X DELETE repos/<owner>/<repo>/pages`. Unpublishing the site isn't enough: the source stays "GitHub Actions", so the next run on `main` publishes it again. A private repo's site is public, as any Pages site is.
+
+## Local preview
+
+Pages has no previews of pull requests, so look at a change locally. `astro dev` serves the site as you edit it. `astro build`, then `astro preview`, serves what's deployed:
+
+```bash
+node_modules/.bin/astro build
+node_modules/.bin/astro preview
+```
+
+Either serves the site under its `base`, such as `http://localhost:4321/<base>/`.
+
+## Trailing slashes
+
+Set `trailingSlash: "always"` in the Astro config, as a new site does, and end every link to a page with a slash. Astro builds `/about/` as `about/index.html`, and GitHub Pages redirects `/about` to it. With the setting, `astro dev` and `astro preview` return a 404 for `/about`, so a link without its slash shows up locally. Nothing else catches one: `run-lychee.sh` passes a link either way.
 
 ## Node
 

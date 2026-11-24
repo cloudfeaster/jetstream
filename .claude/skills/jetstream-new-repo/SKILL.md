@@ -13,7 +13,7 @@ Ask for everything in one go, and confirm the answers before creating anything, 
 
 - **the org and the repo's name**;
 - **a one-line description**;
-- **what kind of repo it is**: core only (no Python code of its own), python (its own code is Python), or website. The website pack isn't ready yet: if they pick it, stop and say so;
+- **what kind of repo it is**: core only (no Python code of its own and no site), python (its own code is Python), or website (an Astro site, which needs Node installed), or both python and website;
 - **private or public**: default to private.
 
 Then check that `gh` is logged in as an org owner (`gh api orgs/<org>/memberships/$(gh api user --jq .login) --jq .role` says `admin`). If it isn't, say that an owner must do step 3, before the first pull request merges, and carry on.
@@ -56,7 +56,7 @@ tag="$(gh release view --repo cloudfeaster/jetstream --json tagName --jq .tagNam
 uvx --from "git+https://github.com/cloudfeaster/jetstream@${tag}" jetstream new-repo --description "<description>"
 ```
 
-Add `--pack python` for a python repo. If `new-repo` reports a problem, tell the user what it said.
+Add `--pack python` for a python repo, `--pack website` for a website, and both for both. If `new-repo` reports a problem, tell the user what it said.
 
 ## 5. Set up and check
 

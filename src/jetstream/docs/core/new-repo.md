@@ -41,7 +41,7 @@ In Claude Code, `/jetstream-new-repo` does steps 1 to 6, then lists step 7.
     uvx --from "git+https://github.com/cloudfeaster/jetstream@<vX.Y.Z>" jetstream new-repo --description "<what the repo is>"
     ```
 
-    Add `--pack python` for a repo whose own code is Python. `new-repo` pins the release it ran from and writes the files the repo owns from then on: `pyproject.toml`, `README.md`, `CONTRIBUTING.md`, `CLAUDE.md` and `.trivyignore`. With the python pack, it also writes `.pip-audit-ignore`, an empty package, and `pyproject.toml`'s `[build-system]` (hatchling), `[project.urls]` and wheel target. Then it runs `jetstream sync`, which writes the files jetstream owns ([dev-environment.md](dev-environment.md)).
+    Add `--pack python` for a repo whose own code is Python, and `--pack website` for an [Astro](https://astro.build/) site. `new-repo` pins the release it ran from and writes the files the repo owns from then on: `pyproject.toml`, `README.md`, `CONTRIBUTING.md`, `CLAUDE.md` and `.trivyignore`. With the python pack, it also writes `.pip-audit-ignore`, an empty package, and `pyproject.toml`'s `[build-system]` (hatchling), `[project.urls]` and wheel target. With the website pack, it also writes a one-page site: `package.json`, `astro.config.mjs`, `tsconfig.json` and `src/pages/index.astro`. Then it runs `jetstream sync`, which writes the files jetstream owns ([dev-environment.md](dev-environment.md)).
 
 1. **Set up and check:**
 
@@ -51,7 +51,7 @@ In Claude Code, `/jetstream-new-repo` does steps 1 to 6, then lists step 7.
     pre-commit run --all-files
     ```
 
-    `cfg4dev.sh` runs `uv sync`, which writes `uv.lock`. `--all-files` checks only the files git tracks, so stage the new ones first, or most hooks check nothing.
+    `cfg4dev.sh` runs `uv sync`, which writes `uv.lock`. For a website, which needs Node (the major version in `.nvmrc`), it also writes `package-lock.json` and installs the site's npm packages. `--all-files` checks only the files git tracks, so stage the new ones first, or most hooks check nothing.
 
 1. **Commit, open a pull request, and merge** once `jetstream lint` passes ([dev-workflow.md](dev-workflow.md)):
 

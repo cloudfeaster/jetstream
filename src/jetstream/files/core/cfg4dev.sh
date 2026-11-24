@@ -47,6 +47,12 @@ if uv sync; then
         unset _jetstream_node
     fi
 
+    # a site with no package-lock.json, such as a new one, gets it here, as uv
+    # sync writes uv.lock
+    if [[ -f .nvmrc && -f package.json && ! -f package-lock.json ]]; then
+        npm install --package-lock-only
+    fi
+
     # the site's npm packages, when package-lock.json is newer than what's
     # installed (npm ci writes node_modules/.package-lock.json)
     if [[ -f .nvmrc && -f package-lock.json ]]; then

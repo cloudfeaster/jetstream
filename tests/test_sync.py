@@ -110,7 +110,7 @@ def test_only_jetstream_gets_its_own_pack(repo: Path) -> None:
     packs: tuple[str, ...] = sync.read_packs(repo)
     assert packs == ("core", sync.SELF_PACK)
     dependabot: dict[str, Any] = yaml.safe_load(sync.expected(packs).files[".github/dependabot.yml"].content)
-    assert [(update["package-ecosystem"], update["directory"]) for update in dependabot["updates"]] == [("uv", "/"), ("github-actions", "/"), ("npm", "/src/jetstream/node")]
+    assert [(update["package-ecosystem"], update["directory"]) for update in dependabot["updates"]] == [("uv", "/"), ("github-actions", "/"), ("npm", "/src/jetstream/node"), ("npm", "/src/jetstream/starters/website")]
 
 
 def test_a_repo_cant_name_jetstreams_own_pack(repo: Path) -> None:

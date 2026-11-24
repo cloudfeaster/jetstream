@@ -20,7 +20,7 @@ pytest
 
 `cfg4dev.sh` and the checks are described in [dev-environment.md](.jetstream/docs/core/dev-environment.md).
 
-`tests/test_pack_matrix.py` starts a new repo with every combination of packs that has starters, using your working tree as the release it pins, and checks that it passes `jetstream check` and every hook. It's an integration test, so `jetstream lint` runs it on every pull request. To run it yourself: `pytest -m integration tests/test_pack_matrix.py`.
+`tests/test_pack_matrix.py` starts a new repo with every combination of packs that has starters, using your working tree as the release it pins, and checks that it passes `jetstream check` and every hook, and, for a site, website CI's checks. It's an integration test, so `jetstream lint` runs it on every pull request. To run it yourself: `pytest -m integration tests/test_pack_matrix.py`.
 
 ## Making a change
 
@@ -46,6 +46,10 @@ npm install --package-lock-only --ignore-scripts --min-release-age=7 --save-exac
 ```
 
 `overrides` replaces Sentry's CLI (`sentry`), which Lighthouse's error reporting brings in, with an empty package of jetstream's own (`stubs/sentry/`): its license, FSL-1.1-Apache-2.0, isn't open source. A package that does the same in future goes the same way, or Lighthouse CI waits.
+
+## Keeping a new website's versions current
+
+`src/jetstream/starters/website/package.json` pins the npm packages a new site starts on. Dependabot updates them, through another npm entry in jetstream's own pack, and the pack matrix tests each update. There's no `package-lock.json`: a new site writes its own.
 
 ## Keeping the uv floor current
 
