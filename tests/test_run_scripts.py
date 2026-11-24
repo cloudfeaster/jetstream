@@ -914,6 +914,42 @@ def test_lighthouse_checks_the_budgets_under_the_base(repo: Path, page: str, *, 
     assert (result.returncode == 0) is passes, result.stdout + result.stderr
 
 
+@pytest.fixture(scope="module")
+def lhci(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Return Lighthouse CI's lhci, installed from jetstream's lockfile."""
+    tools: Path = tmp_path_factory.mktemp("lhci") / "node"
+    shutil.copytree(ROOT / "src" / "jetstream" / "node", tools)
+    subprocess.run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"], cwd=tools, check=True)  # noqa: S607 (npm, wherever setup-node put it)
+    return tools / "node_modules" / ".bin" / "lhci"
+
+
+@pytest.mark.integration  # installs Lighthouse CI from jetstream's lockfile
+@pytest.mark.parametrize("category", ["performance", "accessibility", "best-practices", "seo"])
+@pytest.mark.parametrize(
+    ("scores", "passes"),
+    [((0.80, 0.85, 1.0), False), ((0.80, 1.0, 1.0), True)],
+    ids=["only-the-best-run-meets-it", "only-the-worst-run-misses-it"],
+)
+def test_lighthouse_budgets_are_for_the_median_run(lhci: Path, tmp_path: Path, category: str, scores: tuple[float, ...], *, passes: bool) -> None:
+    """A category's median score must meet its budget, not its best or its worst."""
+    reports: Path = tmp_path / ".lighthouseci"
+    reports.mkdir()
+    for run_number, score in enumerate(scores):
+        categories: dict[str, Any] = {name: {"id": name, "score": score if name == category else 1.0} for name in ("performance", "accessibility", "best-practices", "seo")}
+        report: dict[str, Any] = {"finalUrl": "http://localhost/", "categories": categories, "audits": {}}
+        (reports / f"lhr-{run_number}.json").write_text(json.dumps(report))
+    result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the test's own arguments)
+        [str(lhci), "assert", f"--config={ROOT / 'src' / 'jetstream' / 'node' / 'lighthouserc.json'}"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert "3 total run(s)" in result.stderr
+    assert (result.returncode == 0) is passes, result.stdout + result.stderr
+    assert (f"categories.{category} failure" in re.sub(r"\x1b\[\d*m", "", result.stderr)) is not passes, result.stderr
+
+
 # --- npm licenses (website pack)
 
 

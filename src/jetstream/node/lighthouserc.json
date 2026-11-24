@@ -4,6 +4,7 @@
       "numberOfRuns": 3
     },
     "assert": {
+      "aggregationMethod": "median",
       "assertions": {
         "categories:performance": [
           "error",
