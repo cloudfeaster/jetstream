@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.13.0](https://github.com/cloudfeaster/jetstream/compare/v0.12.0...v0.13.0) (2026-11-24)
+
+
+### Features
+
+* deploy a site to GitHub Pages, once its repo turns that on ([#97](https://github.com/cloudfeaster/jetstream/issues/97)) ([96af103](https://github.com/cloudfeaster/jetstream/commit/96af103a964d217badfc11c4e579574b00084f61))
+
+
+### Bug Fixes
+
+* read every CodeRabbit review, and ask for one when it isn't automatic ([#100](https://github.com/cloudfeaster/jetstream/issues/100)) ([b7bf682](https://github.com/cloudfeaster/jetstream/commit/b7bf68287ea1defae21dab14562b4f7fe1e27fc5))
+
+
+### Documentation
+
+* harden the org in org-setup.md, as Cloudfeaster's own org is ([#99](https://github.com/cloudfeaster/jetstream/issues/99)) ([6c5999a](https://github.com/cloudfeaster/jetstream/commit/6c5999af2356b3c409cb3b59b6d55869a0167f3e))
+
 ## [0.12.0](https://github.com/cloudfeaster/jetstream/compare/v0.11.0...v0.12.0) (2026-11-23)
 
 
