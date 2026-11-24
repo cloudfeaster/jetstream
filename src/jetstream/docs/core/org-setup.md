@@ -19,10 +19,11 @@ gh auth refresh -h github.com -r admin:org
 
 ## 1. Require 2FA
 
-Every member and outside collaborator must have two-factor authentication, so a stolen password alone isn't enough to act as a member: **Settings → Authentication security → Require two-factor authentication**. Only the UI can turn this on. GitHub removes anyone without 2FA when it's turned on, so first check who that would be:
+Every member and outside collaborator must have two-factor authentication, so a stolen password alone isn't enough to act as a member: **Settings → Authentication security → Require two-factor authentication**. Only the UI can turn this on. Turning it on blocks members without 2FA from the org's resources until they enable it, and removes outside collaborators without it, bots and service accounts included, so first check who that would be:
 
 ```bash
-gh api 'orgs/<org>/members?filter=2fa_disabled' --jq '.[].login'
+gh api 'orgs/<org>/members?filter=2fa_disabled' --paginate --jq '.[].login'
+gh api 'orgs/<org>/outside_collaborators?filter=2fa_disabled' --paginate --jq '.[].login'
 ```
 
 ## 2. Limit what members can do
@@ -124,7 +125,13 @@ gh api -X PUT "orgs/<org>/code-security/configurations/$ID/defaults" -f default_
 gh api -X POST "orgs/<org>/code-security/configurations/$ID/attach" -f scope=public
 ```
 
-and the same for `<org> private`, with `default_for_new_repos=private_and_internal` and `scope=private_or_internal`. A repo that changes visibility keeps its configuration, so attach the other one to it.
+and the same for `<org> private`, with `default_for_new_repos=private_and_internal` and `scope=private_or_internal`. Attaching finishes after the command does, and attaching the second while the first is still being attached can fail with a 409, so first wait until this shows every public repo as `enforced` (or `failed`), then check the private ones the same way:
+
+```bash
+gh api "orgs/<org>/code-security/configurations/$ID/repositories" --paginate --jq '.[] | [.repository.name, .status] | @tsv'
+```
+
+A public repo that already uses CodeQL's advanced setup doesn't get the configuration, because it turns on default setup. Switch the repo to default setup, then attach it again. A repo that changes visibility keeps its configuration, so attach the other one to it.
 
 ## 6. Turn off wikis and projects
 
@@ -152,7 +159,7 @@ Each repo that uses jetstream is set to `true`, and every other repo to `false`.
 
 Two org rulesets (**Settings → Repository → Rulesets → New ruleset → New branch ruleset**), with no bypass actors, so they bind org owners too:
 
-- **`default branch`**, on every repo's default branch (target **All repositories**, branches **Include default branch**): restrict deletions, block force pushes, require signed commits, and require a pull request before merging, with 0 approvals if the org has one member, who can't approve their own pull requests.
+- **`default branch`**, on every repo's default branch (target **All repositories**, branches **Include default branch**): restrict deletions, block force pushes, require signed commits, and require a pull request before merging. The JSON below requires 0 approvals, for an org with one member, who can't approve their own pull requests; with more members, raise `required_approving_review_count`.
 - **`default branch: jetstream lint`**, on the default branch of every repo whose `jetstream` property is `true` (target **Dynamic list by property** → `jetstream` is `true`): require the `jetstream lint` status check, with **Require branches to be up to date before merging** on, and **Do not require status checks on creation** on, so a new repo's first push can create its default branch.
 
 They're two rulesets so that a repo that doesn't use jetstream keeps every protection but the check. [dev-workflow.md](dev-workflow.md) says what the rules mean for day-to-day work. As JSON, for `gh api -X POST orgs/<org>/rulesets --input <file>`:
@@ -192,7 +199,12 @@ They're two rulesets so that a repo that doesn't use jetstream keeps every prote
 }
 ```
 
-Don't also use classic branch protection: the rulesets replace it, and two systems of rules are harder to reason about. Remove any with `gh api -X DELETE repos/<org>/<repo>/branches/<branch>/protection`.
+Don't also use classic branch protection: the rulesets replace it, and two systems of rules are harder to reason about. Deleting it drops anything it requires that the rulesets don't, such as approvals or other status checks, so first see what that is, and add what the repo needs to a ruleset:
+
+```bash
+gh api repos/<org>/<repo>/branches/<branch>/protection  # a 404 means there's none
+gh api -X DELETE repos/<org>/<repo>/branches/<branch>/protection
+```
 
 ## 9. Set up the Dependabot alert sync
 
