@@ -7,8 +7,6 @@ description: Finish a branch the way .jetstream/docs/core/dev-workflow.md says (
 
 The second half of `.jetstream/docs/core/dev-workflow.md`: takes a branch through to `main`, and always stops before the merge, the one step that's hard to undo.
 
-**Packs add to this skill.** For each `*.md` file next to this one (such as the public pack's `coderabbit.md`), read it before going on: it says what its pack adds before the merge.
-
 ## 1. Check the branch and its pull request
 
 ```bash
@@ -51,7 +49,7 @@ gh pr checks <number> --watch
 ```
 
 - **A check fails:** stop. Say which check failed and link the run. Don't merge.
-- **The checks pass:** first do what any pack's file next to this one adds (such as working through CodeRabbit's review), then tell the user, and **stop**. Don't merge until they say so.
+- **The checks pass:** tell the user, and **stop**. Don't merge until they say so.
 
 ## 5. Merge (only after the user's go-ahead)
 

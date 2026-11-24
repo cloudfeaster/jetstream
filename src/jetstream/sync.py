@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
 
 # Every pack, in the order their parts are combined. core is required.
-PACKS: Final[tuple[str, ...]] = ("core", "python", "website", "public")
+PACKS: Final[tuple[str, ...]] = ("core", "python", "website")
 # The pack only jetstream itself gets (read_packs), after the others.
 SELF_PACK: Final[str] = "jetstream"
 DISTRIBUTION: Final[str] = "cloudfeaster-jetstream"

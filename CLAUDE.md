@@ -11,7 +11,6 @@ Guidance for Claude Code in the jetstream repo. jetstream follows the convention
 @.jetstream/docs/core/diagrams.md
 @.jetstream/docs/core/licensing.md
 @.jetstream/docs/python/python.md
-@.jetstream/docs/public/coderabbit.md
 
 ## jetstream itself
 
