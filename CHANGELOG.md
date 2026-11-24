@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.14.0](https://github.com/cloudfeaster/jetstream/compare/v0.13.0...v0.14.0) (2026-11-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* a repo with "public" in [tool.jetstream] packs has to take it out, and out of cloudfeaster-jetstream's extras, before it takes this release: jetstream sync rejects a pack it doesn't know.
+
+### Features
+
+* remove the public pack ([#105](https://github.com/cloudfeaster/jetstream/issues/105)) ([7d0375d](https://github.com/cloudfeaster/jetstream/commit/7d0375d2628236db234d0620ee12baf343a37a1f))
+
 ## [0.13.0](https://github.com/cloudfeaster/jetstream/compare/v0.12.0...v0.13.0) (2026-11-24)
 
 
