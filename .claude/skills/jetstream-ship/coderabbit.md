@@ -4,19 +4,22 @@ The public pack's part of `jetstream-ship`: in a public repo, CodeRabbit reviews
 
 ## 1. Wait for the review, then read it
 
-If CodeRabbit doesn't review the pull request automatically (`.jetstream/docs/public/coderabbit.md` says which), ask for a review now:
+How to wait depends on whether CodeRabbit reviews the pull request automatically (`.jetstream/docs/public/coderabbit.md` says which it doesn't):
 
-```bash
-gh api repos/{owner}/{repo}/issues/<number>/comments -f body='@coderabbitai review' --jq .created_at  # when it was asked for
-```
+- **It does:** `gh pr checks <number> --watch` waits for the `CodeRabbit` check too.
+- **It doesn't:** ask for the review, and note when:
 
-`gh pr checks <number> --watch` waits for the `CodeRabbit` check too, but when you asked for the review, the check from before may already be complete. Wait instead until this prints a line, which it does once a check finishes after you asked:
+    ```bash
+    gh api repos/{owner}/{repo}/issues/<number>/comments -f body='@coderabbitai review' --jq .created_at
+    ```
 
-```bash
-gh api "repos/{owner}/{repo}/commits/<head-sha>/check-runs?check_name=CodeRabbit" --jq '.check_runs[] | select(.completed_at > "<asked-at>") | [.conclusion, .output.title] | @tsv'
-```
+    The check from before may already be complete, so wait until this prints a line, which it does once a check finishes after `<asked-at>`:
 
-If CodeRabbit replies that it already reviewed the commit, no new check comes: read that review. If it replies that it can't review, or the check says `skipped`, there's no review: tell the user.
+    ```bash
+    gh api "repos/{owner}/{repo}/commits/<head-sha>/check-runs?check_name=CodeRabbit" --jq '.check_runs[] | select(.completed_at > "<asked-at>") | [.conclusion, .output.title] | @tsv'
+    ```
+
+When you asked: if CodeRabbit replies that it already reviewed the commit, no new check comes: read that review. If it replies that it can't review, or the check says `skipped`, there's no review: tell the user.
 
 The check passes whatever CodeRabbit found, so read what it posted:
 
