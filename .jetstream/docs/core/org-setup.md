@@ -127,13 +127,15 @@ gh api -X PUT "orgs/<org>/code-security/configurations/$ID/defaults" -f default_
 gh api -X POST "orgs/<org>/code-security/configurations/$ID/attach" -f scope=public
 ```
 
-and the same for `<org> private`, with `default_for_new_repos=private_and_internal` and `scope=private_or_internal`. Attaching finishes after the command does, and attaching the second while the first is still being attached can fail with a 409, so first wait until this shows every public repo as `enforced` (or `failed`), then check the private ones the same way:
+and the same for `<org> private`, with `default_for_new_repos=private_and_internal` and `scope=private_or_internal`. Attaching finishes after the command does, and attaching the second while the first is still being attached can fail with a 409, so first wait until this shows no public repo as `attaching`, then check the private ones the same way:
 
 ```bash
 gh api "orgs/<org>/code-security/configurations/$ID/repositories" --paginate --jq '.[] | [.repository.name, .status] | @tsv'
 ```
 
-A public repo that already uses CodeQL's advanced setup doesn't get the configuration, because it turns on default setup. Switch the repo to default setup, then attach it again. A repo that changes visibility keeps its configuration, so attach the other one to it.
+Every repo should end up `enforced`. A `failed` one isn't managed by the configuration: find out which of its settings conflicts, fix that, and attach the configuration again. One cause is CodeQL's advanced setup, which conflicts with the default setup `<org> public` turns on. Either switch the repo to default setup, which disables its own CodeQL workflow and blocks CodeQL analysis uploads, so first check that default setup covers what that workflow does, or give the repo a configuration of its own with `code_scanning_default_setup` as `not_set`.
+
+A repo that changes visibility keeps its configuration, so attach the other one to it.
 
 ## 6. Turn off wikis and projects
 
