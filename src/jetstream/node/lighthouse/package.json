@@ -1,0 +1,13 @@
+{
+  "name": "jetstream-lighthouse",
+  "private": true,
+  "description": "Lighthouse CI, which jetstream's website pack runs on a site. run-lighthouse.sh installs it into .venv with npm ci. Sentry's CLI, which Lighthouse brings in, is replaced by an empty stub (stubs/sentry): its license isn't open source.",
+  "license": "MIT",
+  "dependencies": {
+    "@lhci/cli": "0.16.1",
+    "sentry": "file:stubs/sentry"
+  },
+  "overrides": {
+    "sentry": "$sentry"
+  }
+}

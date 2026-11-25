@@ -66,10 +66,10 @@ def test_python_repo_is_a_package(empty: Path) -> None:
 
 
 def test_website_repo_is_an_astro_site_with_nothing_that_ships(empty: Path) -> None:
-    """A website repo is an Astro site, deployed under its name, whose npm packages are all exact-pinned development tools."""
+    """A website repo is an Astro site, deployed under its name, whose npm packages are all exact-pinned development tools, none of them jetstream's."""
     new_repo.new_repo(empty, DESCRIPTION, ("website",))
     package: dict[str, Any] = json.loads((empty / "package.json").read_text())
-    assert set(package["devDependencies"]) == {"@astrojs/check", "astro", "typescript"}
+    assert set(package["devDependencies"]) == {"astro"}  # @astrojs/check and TypeScript are jetstream's
     assert all(pin[0].isdigit() for pin in package["devDependencies"].values())
     assert "dependencies" not in package
     config: str = (empty / "astro.config.mjs").read_text()

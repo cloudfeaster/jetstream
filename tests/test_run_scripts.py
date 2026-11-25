@@ -11,7 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any, Final
 
@@ -797,39 +797,132 @@ def test_update_jetstream_leaves_a_pull_request_that_is_already_up_to_date(repo:
     assert not git(repo, "status", "--porcelain")
 
 
+# --- Node tools (website pack)
+
+NODE: Final[Path] = ROOT / "src" / "jetstream" / "node"
+
+
+@pytest.fixture
+def node_tool(tmp_path: Path) -> Iterator[Callable[[str], Path]]:
+    """Return a function that gives where a Node tool is installed, with the folder moved out of the way, until the test ends."""
+    moved: list[tuple[Path, Path]] = []
+
+    def folder(tool: str) -> Path:
+        tools: Path = VENV_BIN.parent / f"jetstream-{tool}"
+        saved: Path = tmp_path / f"saved-{tool}"
+        if tools.exists():
+            tools.rename(saved)
+        moved.append((tools, saved))
+        return tools
+
+    yield folder
+    for tools, saved in moved:
+        shutil.rmtree(tools, ignore_errors=True)
+        if saved.exists():
+            saved.rename(tools)
+
+
+def install_fake_tool(tools: Path, tool: str, command: str) -> None:
+    """Put a finished install of ``tool`` in ``tools``, whose ``command`` only says it ran."""
+    executable: Path = tools / "node_modules" / ".bin" / command
+    executable.parent.mkdir(parents=True)
+    executable.write_text(f'#!/bin/bash\necho "fake {command} $* NODE_ENV=${{NODE_ENV:-}}"\n')
+    executable.chmod(0o755)
+    shutil.copy(NODE / tool / "package-lock.json", tools / "installed.json")
+
+
+@pytest.mark.parametrize(("tool", "command"), [("astro-check", "astro-check"), ("lighthouse", "lhci")])
+@pytest.mark.parametrize("left", ["nothing", "copied-lockfile", "another-lockfile", "installed-json-without-the-command"])
+def test_a_node_tool_is_installed_unless_its_install_is_complete(repo: Path, system_path: str, tmp_path: Path, node_tool: Callable[[str], Path], tool: str, command: str, left: str) -> None:
+    """A tool that isn't there, whose install npm ci didn't finish, that another release's lockfile installed, or whose command has gone, is installed again."""
+    tools: Path = node_tool(tool)
+    if left != "nothing":
+        install_fake_tool(tools, tool, command)
+    if left == "copied-lockfile":  # as npm ci leaves it when it fails part way
+        (tools / "installed.json").rename(tools / "package-lock.json")
+    elif left == "another-lockfile":
+        (tools / "installed.json").write_text("{}\n")
+    elif left == "installed-json-without-the-command":
+        (tools / "node_modules" / ".bin" / command).unlink()
+    bin_dir: Path = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "npm").write_text('#!/bin/bash\necho "fake npm $*"; exit 1\n')  # npm ci, attempted, then failing offline
+    (bin_dir / "npm").chmod(0o755)
+    result: subprocess.CompletedProcess[str] = run_script(f"{bin_dir}:{system_path}", repo, "run-install-node-tool.sh", tool, command)
+    assert "fake npm ci" in result.stderr
+    assert not result.stdout
+    assert result.returncode == 1
+    assert not (tools / "installed.json").exists()
+    assert (tools / "package.json").read_bytes() == (NODE / tool / "package.json").read_bytes()
+
+
+def test_a_complete_node_tool_isnt_installed_again(repo: Path, run: Run, node_tool: Callable[[str], Path]) -> None:
+    """A tool whose install finished, from this release's lockfile, is used as it is: npm, which isn't on PATH, isn't run."""
+    tools: Path = node_tool("astro-check")
+    install_fake_tool(tools, "astro-check", "astro-check")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-install-node-tool.sh", "astro-check", "astro-check")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"{tools}\n"
+
+
+def test_install_node_tool_needs_its_arguments(repo: Path, run: Run) -> None:
+    """The script takes a tool and its command."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-install-node-tool.sh", "lighthouse")
+    assert result.returncode == 1
+    assert "usage: run-install-node-tool.sh <tool> <command>" in result.stderr
+
+
 # --- astro check (website pack)
 
-ASTRO_PACKAGES: Final[tuple[str, ...]] = ("astro", "@astrojs/check", "typescript")
 
-
-def install_fake_astro(repo: Path) -> None:
-    """Put the packages run-astro-check.sh needs in ``repo``'s node_modules, with an astro that only says it ran."""
-    for package in ASTRO_PACKAGES:
-        manifest: Path = repo / "node_modules" / package / "package.json"
-        manifest.parent.mkdir(parents=True)
-        manifest.write_text(json.dumps({"name": package}))
+def install_fake_astro(repo: Path, status: int = 0) -> None:
+    """Put an astro that only says it ran, then exits with ``status``, in ``repo``'s node_modules."""
+    manifest: Path = repo / "node_modules" / "astro" / "package.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({"name": "astro"}))
     astro: Path = repo / "node_modules" / ".bin" / "astro"
     astro.parent.mkdir()
-    astro.write_text('#!/bin/bash\necho "fake astro $*"\n')
+    astro.write_text(f'#!/bin/bash\necho "fake astro $* NODE_ENV=${{NODE_ENV:-}}"\nexit {status}\n')
     astro.chmod(0o755)
 
 
-def test_astro_check_runs_the_sites_astro(repo: Path, run: Run) -> None:
-    """The hook runs `astro check` from the site's own node_modules."""
+def test_astro_check_runs_the_sites_astro_and_jetstreams_check(repo: Path, run: Run, node_tool: Callable[[str], Path]) -> None:
+    """The hook generates the types with the site's own astro, then checks with jetstream's @astrojs/check, both in production mode, as astro check does."""
     install_fake_astro(repo)
+    install_fake_tool(node_tool("astro-check"), "astro-check", "astro-check")
     result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh")
-    assert result.returncode == 0
-    assert result.stdout == "fake astro check\n"
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "fake astro sync NODE_ENV=production\nfake astro-check --root . NODE_ENV=production\n"
 
 
-@pytest.mark.parametrize("missing", ASTRO_PACKAGES)
-def test_astro_check_names_a_missing_package(repo: Path, run: Run, missing: str) -> None:
-    """Without one of the packages astro check needs, the hook fails, naming it."""
-    install_fake_astro(repo)
-    shutil.rmtree(repo / "node_modules" / missing)
+def test_astro_check_fails_when_the_types_cant_be_generated(repo: Path, run: Run, node_tool: Callable[[str], Path]) -> None:
+    """A failed astro sync, such as for bad front matter, fails the hook."""
+    install_fake_astro(repo, status=1)
+    install_fake_tool(node_tool("astro-check"), "astro-check", "astro-check")
     result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh")
     assert result.returncode == 1
-    assert f"{missing} isn't in node_modules" in result.stderr
+    assert "fake astro-check" not in result.stdout
+
+
+def test_astro_check_needs_astro(repo: Path, run: Run) -> None:
+    """Without the site's astro, the hook fails, saying so."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh")
+    assert result.returncode == 1
+    assert "astro isn't in node_modules" in result.stderr
+
+
+def test_astro_check_rejects_arguments(repo: Path, run: Run) -> None:
+    """The script takes no arguments."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-astro-check.sh", "--watch")
+    assert result.returncode == 1
+    assert "usage: run-astro-check.sh" in result.stderr
+
+
+def test_astro_check_pins_typescript_without_listing_it() -> None:
+    """TypeScript is @astrojs/check's peer, so npm picks one it supports and Dependabot doesn't propose one it doesn't; the lockfile pins it."""
+    lockfile: dict[str, Any] = json.loads((NODE / "astro-check" / "package-lock.json").read_text())
+    assert set(lockfile["packages"][""]["dependencies"]) == {"@astrojs/check"}
+    assert "version" in lockfile["packages"]["node_modules/typescript"]
 
 
 # --- Lighthouse (website pack)
@@ -854,39 +947,6 @@ def test_lighthouse_rejects_arguments(repo: Path, run: Run) -> None:
     result: subprocess.CompletedProcess[str] = run(repo, "run-lighthouse.sh", "--fast")
     assert result.returncode == 1
     assert "usage: run-lighthouse.sh" in result.stderr
-
-
-@pytest.mark.parametrize("left", ["copied-lockfile", "installed-json-without-lhci"])
-def test_lighthouse_redoes_an_install_that_isnt_complete(repo: Path, system_path: str, tmp_path: Path, left: str) -> None:
-    """An install npm ci didn't finish, or one whose lhci has gone, isn't taken for a finished one: the next run installs again."""
-    tools: Path = VENV_BIN.parent / "jetstream-node"
-    saved: Path = tmp_path / "saved"
-    if tools.exists():
-        tools.rename(saved)
-    try:
-        lockfile: Path = Path(__file__).resolve().parent.parent / "src" / "jetstream" / "node" / "package-lock.json"
-        (tools / "node_modules" / ".bin").mkdir(parents=True)
-        if left == "copied-lockfile":  # as npm ci leaves it when it fails part way
-            shutil.copy(lockfile, tools / "package-lock.json")
-            (tools / "node_modules" / ".bin" / "lhci").write_text("#!/bin/bash\necho half-installed lhci\n")
-            (tools / "node_modules" / ".bin" / "lhci").chmod(0o755)
-        else:  # a finished install, then lhci deleted
-            shutil.copy(lockfile, tools / "installed.json")
-        (repo / "astro.config.mjs").write_text("export default {};\n")
-        (repo / "dist").mkdir()
-        bin_dir: Path = tmp_path / "bin"
-        bin_dir.mkdir()
-        (bin_dir / "npm").write_text('#!/bin/bash\necho "fake npm $*"; exit 1\n')  # npm ci, attempted again, then failing offline
-        (bin_dir / "npm").chmod(0o755)
-        result: subprocess.CompletedProcess[str] = run_script(f"{bin_dir}:{system_path}", repo, "run-lighthouse.sh")
-        assert "fake npm ci" in result.stdout
-        assert "half-installed lhci" not in result.stdout
-        assert result.returncode == 1
-        assert not (tools / "installed.json").exists()
-    finally:
-        shutil.rmtree(tools, ignore_errors=True)
-        if saved.exists():
-            saved.rename(tools)
 
 
 @pytest.mark.integration  # installs Lighthouse CI from jetstream's lockfile, and runs Chrome
@@ -918,7 +978,7 @@ def test_lighthouse_checks_the_budgets_under_the_base(repo: Path, page: str, *, 
 def lhci(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Return Lighthouse CI's lhci, installed from jetstream's lockfile."""
     tools: Path = tmp_path_factory.mktemp("lhci") / "node"
-    shutil.copytree(ROOT / "src" / "jetstream" / "node", tools)
+    shutil.copytree(NODE / "lighthouse", tools)
     subprocess.run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"], cwd=tools, check=True)  # noqa: S607 (npm, wherever setup-node put it)
     return tools / "node_modules" / ".bin" / "lhci"
 
@@ -939,7 +999,7 @@ def test_lighthouse_budgets_are_for_the_median_run(lhci: Path, tmp_path: Path, c
         report: dict[str, Any] = {"finalUrl": "http://localhost/", "categories": categories, "audits": {}}
         (reports / f"lhr-{run_number}.json").write_text(json.dumps(report))
     result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603 (only the test's own arguments)
-        [str(lhci), "assert", f"--config={ROOT / 'src' / 'jetstream' / 'node' / 'lighthouserc.json'}"],
+        [str(lhci), "assert", f"--config={NODE / 'lighthouse' / 'lighthouserc.json'}"],
         cwd=tmp_path,
         capture_output=True,
         text=True,

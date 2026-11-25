@@ -1,10 +1,10 @@
 # Website
 
-The website pack is for a repo that's an [Astro](https://astro.build/) site. The site's npm packages, Astro among them, belong to the repo: they're in its `package.json` and `package-lock.json`, and Dependabot proposes their updates. jetstream sets up Node and npm and runs Astro's checks.
+The website pack is for a repo that's an [Astro](https://astro.build/) site. The site's npm packages, Astro among them, belong to the repo: they're in its `package.json` and `package-lock.json`, and Dependabot proposes their updates. jetstream sets up Node and npm and checks the site, with its own `@astrojs/check`, TypeScript and Lighthouse CI.
 
 ## What the repo needs
 
-- a `package.json` and a `package-lock.json`, with `astro`, `@astrojs/check` and `typescript` in `devDependencies`;
+- a `package.json` and a `package-lock.json`, with `astro` in `devDependencies`;
 - an `astro.config.mjs` (or `.ts`), with the site in `src/`.
 
 A package whose code ships to the browser, and so ends up in the built site, goes in `dependencies`. Everything that only builds or checks the site, Astro included, goes in `devDependencies`: under [licensing.md](../core/licensing.md), those are development tools, and the products are the `dependencies`.
@@ -18,13 +18,23 @@ The `npm-licenses` hook checks the licenses of what `dependencies` bring in, rea
 | `.nvmrc` | the Node version, for local setup and every workflow |
 | `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline), and the Lighthouse budgets (`run-lighthouse.sh`); on `main`, once they pass, deploys it to GitHub Pages, if the repo has turned that on (see [Deploying](#deploying)) |
 | `.github/workflows/jetstream-website-links.yaml` | every night, builds the site and checks every link, links to other sites included (`run-lychee.sh --external`), so a link that stops working fails without anyone pushing |
-| the `astro-check` hook | `astro check` (Astro components, TypeScript and content collections), at every commit, since it checks the whole project |
+| the `astro-check` hook | the site's Astro components, TypeScript and content collections, at every commit, since it checks the whole project (`run-astro-check.sh`; see [Checking types](#checking-types)) |
 | the `npm-licenses` hook | the licenses of the site's product dependencies, the packages in `package-lock.json` that aren't dev dependencies, are ones [licensing.md](../core/licensing.md) allows in a product (`run-npm-licenses.sh`) |
 | `.npmrc` | `npm install` takes no version released in the last 7 days (`min-release-age`, as uv's `exclude-newer`), and saves exact versions |
 | a Dependabot `npm` entry | the site's npm updates, grouped and with core's cooldown |
 | `.gitignore` lines | `node_modules/`, `.astro/` and `.lighthouseci/` |
 
 Locally, `cfg4dev.sh` writes `package-lock.json` if there isn't one (`npm install --package-lock-only`), and runs `npm ci` when `package-lock.json` is newer than what's in `node_modules`. In CI, `jetstream-lint.yaml` installs Node when the repo has an `.nvmrc`, and runs `npm ci` when it has a `package-lock.json` too, so the `astro-check` hook runs there too. `npm ci` fails when `package-lock.json` doesn't match `package.json`, so that's checked as well.
+
+## Checking types
+
+`run-astro-check.sh` does what `astro check` does, with jetstream's `@astrojs/check` and TypeScript: a site doesn't list either, and takes new versions of them in jetstream releases. The first run installs them into `.venv`, from the lockfile jetstream ships, so it needs the network once. `astro check` itself asks to install them, so run the script instead:
+
+```bash
+run-astro-check.sh
+```
+
+A site whose own code imports `typescript` lists it, as any other package.
 
 ## Licenses
 
