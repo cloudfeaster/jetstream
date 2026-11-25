@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
 # Every pack, in the order their parts are combined. core is required.
 PACKS: Final[tuple[str, ...]] = ("core", "python", "website")
+# The pack a repo with actions of its own gets (read_packs), after the others.
+ACTIONS_PACK: Final[str] = "actions"
 # The pack only jetstream itself gets (read_packs), after the others.
 SELF_PACK: Final[str] = "jetstream"
 DISTRIBUTION: Final[str] = "cloudfeaster-jetstream"
@@ -120,8 +122,14 @@ def repo_root(start: Path | None = None) -> Path:
     raise SyncError(msg)
 
 
+def has_own_actions(root: Path) -> bool:
+    """Return whether the repo at ``root`` has a workflow jetstream doesn't own, or is an action: what Dependabot looks for."""
+    workflows: list[Path] = [*(root / WORKFLOWS_DIR).glob("*.yml"), *(root / WORKFLOWS_DIR).glob("*.yaml")]
+    return any(not path.name.startswith(WORKFLOW_PREFIX) for path in workflows) or any((root / name).is_file() for name in ("action.yml", "action.yaml"))
+
+
 def read_packs(root: Path) -> tuple[str, ...]:
-    """Return the packs in ``root``'s ``[tool.jetstream] packs``, in PACKS order."""
+    """Return the packs in ``root``'s ``[tool.jetstream] packs``, in PACKS order, then any pack jetstream adds itself."""
     pyproject: Path = root / "pyproject.toml"
     try:
         config: dict[str, Any] = tomllib.loads(pyproject.read_text())
@@ -143,10 +151,16 @@ def read_packs(root: Path) -> tuple[str, ...]:
     if "core" not in packs:
         msg: str = '[tool.jetstream] packs must include "core"'
         raise SyncError(msg)
-    # jetstream itself also gets its own pack, which no other repo can name:
-    # what only jetstream needs, such as Dependabot updates for its Node tools.
-    itself: tuple[str, ...] = (SELF_PACK,) if config.get("project", {}).get("name") == DISTRIBUTION else ()
-    return tuple(pack for pack in PACKS if pack in packs) + itself
+    # A repo can't name either of these packs. jetstream itself gets its own:
+    # what only jetstream needs, such as Dependabot updates for its Node tools
+    # and for the actions in the workflows it ships. Any other repo gets
+    # Dependabot updates for its own actions, if it has any.
+    added: tuple[str, ...] = ()
+    if config.get("project", {}).get("name") == DISTRIBUTION:
+        added = (SELF_PACK,)
+    elif has_own_actions(root):
+        added = (ACTIONS_PACK,)
+    return tuple(pack for pack in PACKS if pack in packs) + added
 
 
 def walk(directory: Traversable, prefix: str = "") -> dict[str, Traversable]:

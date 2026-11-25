@@ -26,7 +26,12 @@ updates:
           - "*"
 
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/.github/workflows"
+      - "/src/jetstream/files/core/.github/workflows"
+      - "/src/jetstream/files/python/.github/workflows"
+      - "/src/jetstream/files/website/.github/workflows"
+      - "/src/jetstream/parts/core"
     schedule:
       interval: "daily"
     cooldown:

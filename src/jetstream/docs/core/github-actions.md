@@ -16,7 +16,7 @@ uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
 A tag can be moved to different code by the action's owner, or by anyone who compromises them, and every workflow using the tag then runs that code. This has happened: `aquasecurity/trivy-action` had 76 of its 77 version tags repointed at a credential-stealing payload. A SHA can't be moved.
 
-Dependabot still updates SHA-pinned actions, changing the SHA and the comment together. Don't pin to a major tag such as `@v7`: Dependabot never proposes a new major version for one. The org also requires SHA pinning, so a workflow using a tag fails to start.
+Dependabot still updates SHA-pinned actions, changing the SHA and the comment together. It does that for the repo's own workflows only: the actions in `jetstream-*.yaml` are updated by jetstream's releases. A repo with no workflow of its own has no `github-actions` entry in `.github/dependabot.yml`, so adding its first one needs a `jetstream sync` (`jetstream check` says so). Don't pin to a major tag such as `@v7`: Dependabot never proposes a new major version for one. The org also requires SHA pinning, so a workflow using a tag fails to start.
 
 ## Which actions
 

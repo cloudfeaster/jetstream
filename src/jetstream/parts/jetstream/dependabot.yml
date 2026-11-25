@@ -1,12 +1,35 @@
 ---
-# Only jetstream itself gets this pack (sync.read_packs): its own Node tools,
-# Lighthouse CI, in src/jetstream/node, and the versions a new website starts
-# on, in src/jetstream/starters/website. `jetstream sync` appends what follows
+# Only jetstream itself gets this pack (sync.read_packs): the actions in its
+# workflows, its own Node tools, Lighthouse CI, in src/jetstream/node, and the
+# versions a new website starts on, in src/jetstream/starters/website. The
+# workflows jetstream ships are updated along with the copies `jetstream sync`
+# writes here, so jetstream check passes. `jetstream sync` appends what follows
 # the marker to the earlier packs' updates list; the lines above it make this
 # file valid YAML.
 version: 2
 updates:
   # >>> jetstream: appended
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/.github/workflows"
+      - "/src/jetstream/files/core/.github/workflows"
+      - "/src/jetstream/files/python/.github/workflows"
+      - "/src/jetstream/files/website/.github/workflows"
+      - "/src/jetstream/parts/core"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
   - package-ecosystem: "npm"
     directory: "/src/jetstream/node"
     schedule:
