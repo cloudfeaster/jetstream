@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.15.0](https://github.com/cloudfeaster/jetstream/compare/v0.14.0...v0.15.0) (2026-11-25)
+
+
+### Features
+
+* check Lighthouse budgets every night, not on every pull request ([#130](https://github.com/cloudfeaster/jetstream/issues/130)) ([9ec7af1](https://github.com/cloudfeaster/jetstream/commit/9ec7af1d627df4a80042945854752ecb773caf78))
+* check sites with jetstream's own @astrojs/check and TypeScript ([#122](https://github.com/cloudfeaster/jetstream/issues/122)) ([deff920](https://github.com/cloudfeaster/jetstream/commit/deff9205f7adcb8813f7381792c5b28b163880ef))
+* start a new website with jetstream new-repo ([#117](https://github.com/cloudfeaster/jetstream/issues/117)) ([e36fce3](https://github.com/cloudfeaster/jetstream/commit/e36fce351c1741782a473e258216e1934338c5a9))
+
+
+### Bug Fixes
+
+* check Lighthouse budgets against the median run ([#114](https://github.com/cloudfeaster/jetstream/issues/114)) ([b16169a](https://github.com/cloudfeaster/jetstream/commit/b16169aaf9d754ff163f555a128ad343164631db))
+* check the license of an npm file: dependency ([#126](https://github.com/cloudfeaster/jetstream/issues/126)) ([815b3bc](https://github.com/cloudfeaster/jetstream/commit/815b3bc995d7c78198817eae3ebbd3cf8aa157dc))
+* fail a JSON file that doesn't have exactly one value ([#125](https://github.com/cloudfeaster/jetstream/issues/125)) ([7c0d7f5](https://github.com/cloudfeaster/jetstream/commit/7c0d7f504397d43a05806b05fa9e6b8ebc464773))
+* fail cfg4dev.sh when one of its steps fails ([#124](https://github.com/cloudfeaster/jetstream/issues/124)) ([791e11c](https://github.com/cloudfeaster/jetstream/commit/791e11c280ad8ccde8113701bd59aa0ae99f1e3f))
+* keep Dependabot off the workflows jetstream owns ([#121](https://github.com/cloudfeaster/jetstream/issues/121)) ([ed29df9](https://github.com/cloudfeaster/jetstream/commit/ed29df9fd56cf42c5923d3e0d55e9d65544a5013))
+* say why a download or a script without Node failed ([#123](https://github.com/cloudfeaster/jetstream/issues/123)) ([8b6c608](https://github.com/cloudfeaster/jetstream/commit/8b6c6083d91dd8ee910e53e8e0424a4a764b7a0d))
+
+
+### Documentation
+
+* name the BSD licenses a product dependency can have ([#127](https://github.com/cloudfeaster/jetstream/issues/127)) ([4f0f2cc](https://github.com/cloudfeaster/jetstream/commit/4f0f2ccd75c6a9e3a6663960945a7e2914929e2a))
+
 ## [0.14.0](https://github.com/cloudfeaster/jetstream/compare/v0.13.0...v0.14.0) (2026-11-24)
 
 
