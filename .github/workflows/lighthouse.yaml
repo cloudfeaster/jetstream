@@ -1,0 +1,61 @@
+---
+# Runs the integration tests with the ones that run Lighthouse, which
+# jetstream-lint.yaml skips because they're slow: every night, and on a pull
+# request that changes what they test. GitHub emails a failed run to whoever
+# last changed the schedule below. Not named jetstream-*.yaml: jetstream
+# syncs itself, and sync deletes any jetstream-* workflow the release doesn't
+# ship.
+name: Lighthouse
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "30 8 * * *"
+  pull_request:
+    paths:
+      - .github/workflows/lighthouse.yaml
+      - .nvmrc
+      - src/jetstream/bin/website/run-astro-config.sh
+      - src/jetstream/bin/website/run-install-node-tool.sh
+      - src/jetstream/bin/website/run-lighthouse.sh
+      - src/jetstream/node/lighthouse/**
+      - src/jetstream/starters/website/**
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lighthouse:
+    name: Lighthouse tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          # No Actions cache, as in jetstream-lint.yaml: jetstream wheels are
+          # never kept anywhere but the machine that built them.
+          enable-cache: false
+
+      - name: Install jetstream's dev environment
+        run: uv sync --locked
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Integration tests, with Lighthouse's
+        env:
+          JETSTREAM_LIGHTHOUSE: "1"
+        run: uv run --no-sync run-integration-tests.sh

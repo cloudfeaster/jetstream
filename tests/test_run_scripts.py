@@ -972,6 +972,8 @@ GOOD_PAGE: Final[str] = (
     '<title>Home</title><meta name="description" content="A page that meets every budget."></head>'
     "<body><main><h1>Home</h1><p>Nothing here but text.</p></main></body></html>"
 )
+LIGHTHOUSE: Final[bool] = "JETSTREAM_LIGHTHOUSE" in os.environ  # set by lighthouse.yaml; jetstream lint leaves these tests out, as they're slow
+needs_lighthouse: Final[pytest.MarkDecorator] = pytest.mark.skipif(not LIGHTHOUSE, reason="runs Lighthouse: set JETSTREAM_LIGHTHOUSE")
 CHROME: Final[str | None] = next((found for name in ("google-chrome-stable", "google-chrome") if (found := shutil.which(name))), None)
 
 
@@ -990,7 +992,7 @@ def test_lighthouse_rejects_arguments(repo: Path, run: Run) -> None:
 
 
 @pytest.mark.integration  # installs Lighthouse CI from jetstream's lockfile, and runs Chrome
-@pytest.mark.skipif(CHROME is None, reason="needs Google's Chrome, as GitHub's runners have")
+@needs_lighthouse
 @pytest.mark.parametrize(
     ("page", "passes"),
     [(GOOD_PAGE, True), ("<html><body><p>No title, language or description.</p></body></html>", False)],
@@ -1024,6 +1026,7 @@ def lhci(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.integration  # installs Lighthouse CI from jetstream's lockfile
+@needs_lighthouse
 @pytest.mark.parametrize("category", ["performance", "accessibility", "best-practices", "seo"])
 @pytest.mark.parametrize(
     ("scores", "passes"),

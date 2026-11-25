@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Run the repo's tests marked integration, the ones run-unit-tests.sh leaves
-# out: jetstream-lint.yaml runs them after the hooks. It passes when the repo
-# has none.
+# out: jetstream-lint.yaml runs them after the hooks. It names the 10 slowest,
+# and passes when the repo has none.
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ cd "${toplevel}"
 NO_TESTS_COLLECTED=5
 
 status=0
-pytest -m integration || status=$?
+pytest -m integration --durations=10 || status=$?
 if [[ "${status}" -eq "${NO_TESTS_COLLECTED}" ]]; then
     exit 0
 fi

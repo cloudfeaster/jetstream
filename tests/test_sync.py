@@ -242,12 +242,13 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
 
 
 def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
-    """The website pack adds .nvmrc, .npmrc, website CI (with its opt-in Pages deploy), the astro-check and npm-licenses hooks, npm updates and its .gitignore lines, after the python pack's."""
+    """The website pack adds .nvmrc, .npmrc, website CI (with its opt-in Pages deploy), the nightly link and Lighthouse checks, the astro-check and npm-licenses hooks, npm updates and its .gitignore lines, after the python pack's."""
     want: sync.Expected = sync.expected(("core", "python", "website"))
     assert {
         ".nvmrc",
         ".npmrc",
         ".github/workflows/jetstream-website-ci.yaml",
+        ".github/workflows/jetstream-website-lighthouse.yaml",
         ".github/workflows/jetstream-website-links.yaml",
         ".jetstream/docs/website/website.md",
     } <= set(want.files)
