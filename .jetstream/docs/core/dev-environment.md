@@ -19,7 +19,7 @@ source cfg4dev.sh
 1. runs `pre-commit install`, for the `pre-commit` git hook;
 1. sources `cfg4dev.local.sh`, if the repo has one, for the repo's own setup.
 
-Run it again whenever you like; it only changes what's out of date. In VS Code, every new terminal runs it for you (`.vscode/terminal-init.sh`). CI doesn't use it: the `jetstream-lint.yaml` workflow runs `uv sync --locked` itself.
+If `uv sync` fails, it skips the rest; if another step fails, the rest still run. Either way, it returns 1. Run it again whenever you like; it only changes what's out of date. In VS Code, every new terminal runs it for you (`.vscode/terminal-init.sh`). CI doesn't use it: the `jetstream-lint.yaml` workflow runs `uv sync --locked` itself.
 
 ## jetstream sync and jetstream check
 

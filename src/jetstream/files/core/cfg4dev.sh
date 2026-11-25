@@ -10,10 +10,16 @@
 # uv sync installs jetstream and every tool it pins into .venv, jetstream sync
 # writes jetstream's files into the repo, and pre-commit install sets up the
 # git hooks, which call the tools in .venv/bin.
+#
+# If the first uv sync fails, the rest is skipped. If another step fails, the
+# rest still run, so a new clone gets its git hooks. Either way, the status is
+# 1.
 
 _jetstream_toplevel="$(git rev-parse --show-toplevel)" || return 1
 pushd "${_jetstream_toplevel}" > /dev/null || return 1
 unset _jetstream_toplevel
+
+_jetstream_status=0
 
 uv self update || true
 
@@ -29,10 +35,10 @@ if uv sync; then
     # jetstream sync can change pyproject.toml (jetstream's keys), and then
     # .venv has to catch up.
     _jetstream_pyproject="$(cksum < pyproject.toml)"
-    jetstream sync
+    jetstream sync || _jetstream_status=1
     _jetstream_pyproject_synced="$(cksum < pyproject.toml)"
     if [[ "${_jetstream_pyproject_synced}" != "${_jetstream_pyproject}" ]]; then
-        uv sync
+        uv sync || _jetstream_status=1
     fi
     unset _jetstream_pyproject _jetstream_pyproject_synced
 
@@ -50,24 +56,32 @@ if uv sync; then
     # a site with no package-lock.json, such as a new one, gets it here, as uv
     # sync writes uv.lock
     if [[ -f .nvmrc && -f package.json && ! -f package-lock.json ]]; then
-        npm install --package-lock-only
+        npm install --package-lock-only || _jetstream_status=1
     fi
 
     # the site's npm packages, when package-lock.json is newer than what's
     # installed (npm ci writes node_modules/.package-lock.json)
     if [[ -f .nvmrc && -f package-lock.json ]]; then
         if [[ ! package-lock.json -ot node_modules/.package-lock.json ]]; then
-            npm ci
+            npm ci || _jetstream_status=1
         fi
     fi
 
     # the pre-commit hook
-    pre-commit install
+    pre-commit install || _jetstream_status=1
 
     if [[ -f cfg4dev.local.sh ]]; then
         # shellcheck disable=SC1091
-        source ./cfg4dev.local.sh
+        source ./cfg4dev.local.sh || _jetstream_status=1
     fi
+else
+    _jetstream_status=1
 fi
 
 popd > /dev/null || return 1
+
+if [[ "${_jetstream_status}" != 0 ]]; then
+    unset _jetstream_status
+    return 1
+fi
+unset _jetstream_status
