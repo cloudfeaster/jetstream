@@ -3,8 +3,8 @@
 A site's product dependencies are the packages in ``package-lock.json`` that
 aren't dev dependencies: what its ``dependencies`` bring in, which can end up
 in the built site. Each must have a license licensing.md allows in a product:
-MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC or 0BSD, or MPL-2.0 for a
-transitive dependency only (decision 24). ``devDependencies``, Astro and the
+MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC or 0BSD, OFL-1.1 for a font,
+or MPL-2.0 for a transitive dependency only (decision 24). ``devDependencies``, Astro and the
 rest of the build toolchain, are development tools, so they aren't checked.
 
 npm writes each package's license into the lockfile, as an SPDX expression
@@ -29,8 +29,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 # The licenses licensing.md allows in a product dependency. An exception is a
-# change to jetstream, not to a repo (licensing.md "Exceptions").
-ALLOWED: Final[frozenset[str]] = frozenset({"MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD"})
+# change to jetstream, not to a repo (licensing.md "Exceptions"). OFL-1.1 is
+# for fonts, which is what it's written for: a lockfile doesn't say what's one.
+ALLOWED: Final[frozenset[str]] = frozenset({"MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "OFL-1.1"})
 ALLOWED_TRANSITIVE: Final[frozenset[str]] = ALLOWED | {"MPL-2.0"}
 
 WORD: Final[re.Pattern[str]] = re.compile(r"\(|\)|[^\s()]+")
