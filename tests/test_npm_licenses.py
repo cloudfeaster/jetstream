@@ -15,6 +15,8 @@ from jetstream import npm_licenses
         ("MIT", True),
         ("ISC", True),
         ("0BSD", True),
+        ("OFL-1.1", True),
+        ("OFL-1.0", False),
         ("GPL-3.0-only", False),
         ("(MIT OR GPL-3.0-only)", True),
         ("GPL-3.0-only OR MIT", True),
