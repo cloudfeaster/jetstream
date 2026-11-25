@@ -33,8 +33,9 @@ MATRIX: Final[list[tuple[str, ...]]] = [packs for size in range(len(OTHER_PACKS)
 
 
 class Release(NamedTuple):
-    """The working tree, as a jetstream release: its commit, and the environment that uses it."""
+    """The working tree, as a jetstream release: its repo and commit, and the environment that uses it."""
 
+    source: Path
     commit: str
     env: dict[str, str]
 
@@ -69,7 +70,36 @@ def release(tmp_path_factory: pytest.TempPathFactory) -> Release:
     run(source, env, "git", "add", "--all")
     run(source, env, "git", "commit", "--quiet", "--message", "the working tree")
     run(source, env, "git", "tag", TAG)
-    return Release(run(source, env, "git", "rev-parse", "HEAD").strip(), env)
+    return Release(source, run(source, env, "git", "rev-parse", "HEAD").strip(), env)
+
+
+def test_a_failed_download_leaves_the_old_release_working(release: Release, tmp_path: Path) -> None:
+    """When a newer release's tools can't be downloaded, uv sync fails with one line from jetstream, and the old release's tools still run."""
+    repo: Path = tmp_path / "my-repo"
+    repo.mkdir()
+    run(repo, release.env, "git", "init", "--quiet", "--initial-branch", "main")
+    run(repo, release.env, "uvx", "--from", f"git+{URL}@{TAG}", "jetstream", "new-repo", "--description", "A new repo")
+    run(repo, release.env, "uv", "sync")
+
+    newer: str = "v999.0.0"
+    pyproject: Path = release.source / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text().replace(f'version = "{TAG[1:]}"', f'version = "{newer[1:]}"', 1))
+    run(release.source, release.env, "git", "commit", "--quiet", "--all", "--message", "a newer release")
+    run(release.source, release.env, "git", "tag", newer)
+    (repo / "pyproject.toml").write_text((repo / "pyproject.toml").read_text().replace(f'tag = "{TAG}"', f'tag = "{newer}"', 1))
+    run(repo, release.env, "uv", "lock")
+
+    # Nothing listens on this port, so no download can start; jetstream's download cache is empty.
+    offline: dict[str, str] = release.env | {"HTTPS_PROXY": "http://127.0.0.1:9", "https_proxy": "http://127.0.0.1:9", "XDG_CACHE_HOME": str(tmp_path / "cache"), "TMPDIR": str(tmp_path)}
+    failed: subprocess.CompletedProcess[str] = subprocess.run(["uv", "sync"], cwd=repo, env=offline, capture_output=True, text=True, check=False)  # noqa: S607 (uv from PATH)
+    assert failed.returncode == 1
+    assert "*** jetstream: can't download " in failed.stderr
+    assert "Traceback" not in failed.stderr
+    assert not list(tmp_path.glob("jetstream-build-*"))
+
+    assert run(repo, offline, ".venv/bin/jetstream", "--version") == f"jetstream {TAG[1:]}\n"
+    run(repo, offline, ".venv/bin/mado", "--version")  # a downloaded tool
+    run(repo, offline, ".venv/bin/yamllint", "--version")  # and one from PyPI
 
 
 @pytest.mark.parametrize("packs", MATRIX, ids=["+".join(("core", *packs)) for packs in MATRIX])

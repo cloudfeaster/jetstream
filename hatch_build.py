@@ -12,14 +12,14 @@ Downloads are kept in ``$XDG_CACHE_HOME/jetstream/downloads`` (default
 install doesn't download them again. A cached file is checked again before
 it's used.
 
-``npm ci`` for the website pack comes in a later change. Any failure stops
-the build with a one-line ``*** jetstream: ...`` message rather than a
-traceback.
+Any failure stops the build with a one-line ``*** jetstream: ...`` message
+rather than a traceback, and uv leaves the existing ``.venv`` as it was.
 """
 
 from __future__ import annotations
 
 import hashlib
+import http.client
 import os
 import platform
 import shutil
@@ -144,18 +144,22 @@ def download(binary: Binary, cache_dir: Path) -> Path:
     partial: Path = Path(partial_name)
     try:
         digest: hashlib._Hash = hashlib.sha256()
+        size: int = 0
         # The URL is written out here, not taken from binary.url, so ruff's S310
         # can see it's https: a download can never open a file: or other URL. bandit's B310 can't.
         with os.fdopen(fd, "wb") as out, urllib.request.urlopen(f"https://github.com/{binary.path}", timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:  # nosec B310
             while chunk := response.read(CHUNK_SIZE):
                 digest.update(chunk)
-                out.write(chunk)
+                size += out.write(chunk)
+            full_size: str | None = response.headers["Content-Length"]
+        if full_size is not None and size < int(full_size):  # reading a response that's cut off raises no error
+            fail(f"can't download {binary.name} {binary.version} from {binary.url}: it stopped after {size} of {full_size} bytes")
         if digest.hexdigest() != binary.sha256:
             fail(
                 f"SHA-256 mismatch for {binary.name} {binary.version} from {binary.url}: expected {binary.sha256}, got {digest.hexdigest()}",
             )
         partial.replace(cached)
-    except (urllib.error.URLError, OSError) as e:
+    except (urllib.error.URLError, http.client.HTTPException, OSError) as e:
         reason: object = getattr(e, "reason", None) or e
         fail(f"can't download {binary.name} {binary.version} from {binary.url}: {reason}")
     finally:
@@ -212,12 +216,16 @@ class JetstreamBuildHook(BuildHookInterface):
         build_data["tag"] = f"py3-none-{tag}"
 
         self._work_dir: Path = Path(tempfile.mkdtemp(prefix="jetstream-build-"))
-        cache_dir: Path = default_cache_dir()
-        for binary in load_binaries(Path(self.root) / PINS_FILE, tag):
-            executable: Path = extract(binary, download(binary, cache_dir), self._work_dir)
-            build_data["shared_scripts"][str(executable)] = binary.name
-        for script in run_scripts(Path(self.root)):
-            build_data["shared_scripts"][str(script)] = script.name
+        try:
+            cache_dir: Path = default_cache_dir()
+            for binary in load_binaries(Path(self.root) / PINS_FILE, tag):
+                executable: Path = extract(binary, download(binary, cache_dir), self._work_dir)
+                build_data["shared_scripts"][str(executable)] = binary.name
+            for script in run_scripts(Path(self.root)):
+                build_data["shared_scripts"][str(script)] = script.name
+        except BaseException:  # hatchling doesn't call finalize() after a failure, and fail() raises SystemExit
+            shutil.rmtree(self._work_dir, ignore_errors=True)
+            raise
 
     @override
     def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:

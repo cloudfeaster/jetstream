@@ -20,6 +20,11 @@ fi
 toplevel="$(git rev-parse --show-toplevel)"
 cd "${toplevel}"
 
+if ! command -v node > /dev/null; then
+    echo "*** $(basename "$0"): node isn't installed: install Node, at the major version in .nvmrc" >&2
+    exit 1
+fi
+
 config=""
 for name in astro.config.mjs astro.config.mts astro.config.ts astro.config.js; do
     if [[ -f "${name}" ]]; then

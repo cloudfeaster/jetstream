@@ -15,6 +15,11 @@ fi
 tool="$1"
 command="$2"  # the tool's command, in its node_modules/.bin
 
+if ! command -v node > /dev/null; then
+    echo "*** $(basename "$0"): node isn't installed: install Node, at the major version in .nvmrc" >&2
+    exit 1
+fi
+
 # This script is installed in .venv/bin, next to jetstream's Python.
 bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 package="$("${bin_dir}/python" -c 'import importlib.resources, sys; print(importlib.resources.files("jetstream") / "node" / sys.argv[1])' "${tool}")"
@@ -24,6 +29,10 @@ tools="$(dirname "${bin_dir}")/jetstream-${tool}"
 # install that fails part way, or one whose command has gone, is redone on the
 # next run.
 if ! cmp -s "${package}/package-lock.json" "${tools}/installed.json" || [[ ! -x "${tools}/node_modules/.bin/${command}" ]]; then
+    if ! command -v npm > /dev/null; then
+        echo "*** $(basename "$0"): npm, which comes with Node, isn't installed: install Node, at the major version in .nvmrc" >&2
+        exit 1
+    fi
     rm -rf "${tools}"
     cp -R "${package}" "${tools}"
     # No package in the lockfiles has an install script, so none is run.
