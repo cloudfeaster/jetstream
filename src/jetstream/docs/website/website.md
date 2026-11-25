@@ -16,8 +16,9 @@ The `npm-licenses` hook checks the licenses of what `dependencies` bring in, rea
 | File | What it does |
 |---|---|
 | `.nvmrc` | the Node version, for local setup and every workflow |
-| `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline), and the Lighthouse budgets (`run-lighthouse.sh`); on `main`, once they pass, deploys it to GitHub Pages, if the repo has turned that on (see [Deploying](#deploying)) |
+| `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline); on `main`, once they pass, deploys it to GitHub Pages, if the repo has turned that on (see [Deploying](#deploying)) |
 | `.github/workflows/jetstream-website-links.yaml` | every night, builds the site and checks every link, links to other sites included (`run-lychee.sh --external`), so a link that stops working fails without anyone pushing |
+| `.github/workflows/jetstream-website-lighthouse.yaml` | every night, builds the site and checks the Lighthouse budgets (`run-lighthouse.sh`; see [Lighthouse](#lighthouse)) |
 | the `astro-check` hook | the site's Astro components, TypeScript and content collections, at every commit, since it checks the whole project (`run-astro-check.sh`; see [Checking types](#checking-types)) |
 | the `npm-licenses` hook | the licenses of the site's product dependencies, the packages in `package-lock.json` that aren't dev dependencies, are ones [licensing.md](../core/licensing.md) allows in a product (`run-npm-licenses.sh`) |
 | `.npmrc` | `npm install` takes no version released in the last 7 days (`min-release-age`, as uv's `exclude-newer`), and saves exact versions |
@@ -53,7 +54,7 @@ A link to another site that's right but can't be checked, because the site block
 
 ## Lighthouse
 
-Website CI checks the built site against jetstream's Lighthouse budgets, the same for every site (decision 25 in jetstream's #1): performance at least 0.90, and accessibility, best practices and SEO at least 0.95. `run-lighthouse.sh` serves `dist/` under the site's `base`, as it's deployed, and runs Lighthouse 3 times on each of up to 5 pages, the shallowest first; a category's median score must meet its budget. A budget that's wrong for every site is a change to jetstream. To run it yourself, after `astro build`:
+Every night, `jetstream-website-lighthouse.yaml` checks the built site against jetstream's Lighthouse budgets, the same for every site (decision 25 in jetstream's #1): performance at least 0.90, and accessibility, best practices and SEO at least 0.95. `run-lighthouse.sh` serves `dist/` under the site's `base`, as it's deployed, and runs Lighthouse 3 times on each of up to 5 pages, the shallowest first; a category's median score must meet its budget. A budget that's wrong for every site is a change to jetstream. No pull request or deploy waits for it, so a page that misses a budget can be live before that night's run fails. To check before merging, run the workflow on the branch (`gh workflow run jetstream-website-lighthouse.yaml --ref <branch>`), or run it yourself, after `astro build`:
 
 ```bash
 run-lighthouse.sh
@@ -63,7 +64,7 @@ The reports go in `.lighthouseci/`, an HTML file for each run. The first run ins
 
 ## Deploying
 
-Website CI deploys the site to [GitHub Pages](https://docs.github.com/en/pages) after every push to `main` whose build passes its link and Lighthouse checks, but only once the repo's Pages source is "GitHub Actions". Until then nothing is published, and the deploy job is skipped, with a notice saying why. So a site goes live when an owner chooses, not when it first takes the pack:
+Website CI deploys the site to [GitHub Pages](https://docs.github.com/en/pages) after every push to `main` whose build passes its link check, but only once the repo's Pages source is "GitHub Actions". Until then nothing is published, and the deploy job is skipped, with a notice saying why. So a site goes live when an owner chooses, not when it first takes the pack:
 
 1. Set `site` (and `base`, for a project site without a custom domain) in the Astro config, to the URL the site will have.
 1. In the repo's Settings → Pages, set the source to "GitHub Actions", and add the custom domain, if it has one. GitHub creates the `github-pages` environment, which only `main` can deploy to.

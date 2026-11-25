@@ -21,7 +21,7 @@ import pytest
 
 from jetstream import new_repo, sync
 
-from .test_run_scripts import CHROME
+from .test_run_scripts import LIGHTHOUSE
 
 pytestmark = pytest.mark.integration  # uv sync, and the hooks that use the network
 
@@ -129,7 +129,5 @@ def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: t
         assert wrong.returncode == 1
         assert "wrong.astro" in wrong.stdout  # jetstream's TypeScript checks the site's pages
         page.unlink()
-    if packs == ("website",):  # once, as it's slow and the site is the same
-        if CHROME is None:
-            pytest.skip("everything but Lighthouse passed: it needs Google's Chrome, as GitHub's runners have")
+    if LIGHTHOUSE and packs == ("website",):  # once, as it's slow and the site is the same
         run(repo, release.env, "uv", "run", "--no-sync", "run-lighthouse.sh")

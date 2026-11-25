@@ -22,6 +22,8 @@ pytest
 
 `tests/test_pack_matrix.py` starts a new repo with every combination of packs that has starters, using your working tree as the release it pins, and checks that it passes `jetstream check` and every hook, and, for a site, website CI's checks. It's an integration test, so `jetstream lint` runs it on every pull request. To run it yourself: `pytest -m integration tests/test_pack_matrix.py`.
 
+The tests that run Lighthouse are slow, so `jetstream lint` skips them. The `Lighthouse` workflow (`.github/workflows/lighthouse.yaml`) runs them every night, and on a pull request that changes Lighthouse's files. They need Google's Chrome; to run them yourself: `JETSTREAM_LIGHTHOUSE=1 pytest -m integration`.
+
 ## Making a change
 
 Follow [dev-workflow.md](.jetstream/docs/core/dev-workflow.md): branch, commit signed, open a draft pull request, and squash-merge once `jetstream lint` passes. Commit messages are [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `docs: ...`); releases and `CHANGELOG.md` are generated from them (see [Releasing](#releasing)).
