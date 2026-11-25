@@ -11,8 +11,8 @@
 [bundled]
 shellcheck-py = "GPL-3.0-only"  # the ShellCheck binary in its wheels
 
-# A package whose metadata names no license licensecheck recognises, or an
-# AGPL one, once a review has found it allowed: package = "SPDX license"
+# A package whose metadata names no license the test recognises, or an AGPL
+# one, once a review has found it allowed: package = "SPDX license"
 # with a comment saying why. An AGPL tool that serves anything over a network
 # needs that review before it's used.
 [reviewed]

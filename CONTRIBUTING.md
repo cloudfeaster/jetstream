@@ -74,14 +74,14 @@ To change it, edit `required-version` in core's part, run `jetstream sync` (jets
 
 ## Licenses of the tools jetstream installs
 
-Every tool jetstream installs is a development tool, so it may have any open-source license except that an AGPL one needs a review first ([licensing.md](src/jetstream/docs/core/licensing.md#development-tools)). `tests/test_dev_tool_licenses.py` checks:
+Every tool jetstream installs is a development tool, so it may have any open-source license except that an AGPL one needs a review first ([licensing.md](src/jetstream/docs/core/licensing.md#development-tools)). `tests/test_dev_tool_licenses.py` checks these against a list of the open-source SPDX license IDs (`OPEN_SOURCE`), not with licensecheck, which reads `FSL-1.1-Apache-2.0` as Apache:
 
-- **every Python package** that a pack's extra installs, with its dependencies, using the license licensecheck reads from its installed metadata;
-- **every Node package** in `src/jetstream/node/*/package-lock.json`, by its SPDX license ID, against a list of the open-source ones (`NODE_OPEN_SOURCE`); licensecheck isn't used for them, because it reads `FSL-1.1-Apache-2.0` as Apache;
+- **every Python package** that a pack's extra installs, with its dependencies, using its installed metadata: its SPDX license expression, or, if it has none, its license classifiers (`OPEN_SOURCE_CLASSIFIERS`);
+- **every Node package** in `src/jetstream/node/*/package-lock.json`;
 - **every binary** in `binaries.toml`, by its `license`. The `binary pins` workflow's `bin/update-binary.py --check` fails if GitHub reports a different license for the tool's repo;
 - **what's bundled inside a package**, under a license of its own, which no metadata shows. It's recorded by hand in `dev-tool-licenses.toml`'s `[bundled]`, such as the GPL ShellCheck binary in `shellcheck-py`'s wheels.
 
-When you add a tool, check what its wheels contain and record anything bundled. A license the test can't recognise, a missing one, or an AGPL one fails until someone reviews it and records it in `[reviewed]`, with a comment saying why it's allowed.
+When you add a tool, check what its wheels contain and record anything bundled. A license that isn't on the list fails until someone reviews it. If it's open source, add it to the list. A missing one, one that isn't an SPDX expression, or an AGPL one goes in `[reviewed]` instead, with a comment saying why it's allowed.
 
 ## Releasing
 
