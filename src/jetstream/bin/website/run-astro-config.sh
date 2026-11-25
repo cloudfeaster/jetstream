@@ -7,8 +7,10 @@
 # run-lychee.sh and run-lighthouse.sh use it to check the built site as it's
 # deployed, under its base.
 #
-# Node reads a .ts config by stripping its types, so it can't read TypeScript
-# that only compiling could, such as an enum.
+# The config is loaded as Astro loads it: with Node, or, if that fails, with
+# the site's Vite, which also reads what Node can't: a relative import with no
+# extension, and TypeScript that has to be compiled, such as an enum. Without
+# Vite, because the site's packages aren't installed, Node's error stands.
 
 set -euo pipefail
 
@@ -38,14 +40,24 @@ if [[ -z "${config}" ]]; then
 fi
 
 node --input-type=module -e '
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+const path = resolve(process.argv[1]);
 let config;
 try {
-    config = (await import(pathToFileURL(process.argv[1]).href)).default;
+    config = (await import(pathToFileURL(path).href)).default;
 } catch (error) {
-    if (error.code !== "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX") throw error;
-    console.error("*** run-astro-config.sh: " + process.argv[1] + " uses TypeScript that Node can only compile, not strip, such as an enum; use a const object instead (" + error.message + ")");
-    process.exit(1);
+    let vite;
+    try {
+        const astro = createRequire(createRequire(path).resolve("astro/package.json"));
+        vite = await import(pathToFileURL(astro.resolve("vite")).href);
+    } catch {
+        if (error.code !== "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX") throw error;
+        console.error("*** run-astro-config.sh: " + process.argv[1] + " uses TypeScript that Node can only compile, not strip, such as an enum; use a const object instead (" + error.message + ")");
+        process.exit(1);
+    }
+    config = (await vite.loadConfigFromFile({ command: "build", mode: "production" }, path, undefined, "silent")).config;
 }
 console.log(config.site ? new URL(config.site).origin : "");
 console.log((config.base ?? "").replace(/^\/+|\/+$/g, ""));

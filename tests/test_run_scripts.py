@@ -208,6 +208,49 @@ def test_mado_fails_bad_markdown(repo: Path, run: Run) -> None:
     assert "MD018" in result.stdout + result.stderr
 
 
+FRONT_MATTER: Final[str] = "---\ntitle: A page\n---\n\n"
+
+
+def test_mado_passes_a_page_whose_title_is_in_its_front_matter(repo: Path, run: Run) -> None:
+    """A page with a title in its front matter needs no top level heading (MD041, MD002), whatever its name."""
+    add(repo, {"README.md": "# Title\n", "content/a [page].md": f"{FRONT_MATTER}Some text.\n\n## A heading\n"})
+    result: subprocess.CompletedProcess[str] = run(repo, "run-mado.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    ("files", "rule"),
+    [
+        ({"page.md": f"{FRONT_MATTER}#Not a heading\n"}, "page.md:5:1: MD018"),
+        ({"page.md": f"{FRONT_MATTER}Some text.\n", "README.md": "No heading.\n"}, "README.md:1:1: MD041"),
+        ({"page.md": "---\ndescription: No title\n---\n\nSome text.\n"}, "page.md:1:1: MD041"),
+        ({"page.md": "---\ndescription: No title\n---\n\ntitle: in the text\n"}, "page.md:1:1: MD041"),
+        ({"page.md": "---\n\ntitle: no front matter, as nothing ends it\n"}, "page.md:1:1: MD041"),
+    ],
+    ids=["other-rules", "other-files", "front-matter-without-a-title", "title-after-the-front-matter", "front-matter-that-doesn't-end"],
+)
+def test_mado_fails_what_a_title_in_front_matter_does_not_excuse(repo: Path, run: Run, files: dict[str, str], rule: str) -> None:
+    """Front matter with a title only excuses its own file from MD041 and MD002."""
+    add(repo, files)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-mado.sh")
+    assert result.returncode == 1
+    assert rule in result.stdout
+
+
+def test_mado_still_skips_what_it_skipped(repo: Path, run: Run) -> None:
+    """The files mado.toml excludes, hidden folders and gitignored files aren't checked, though mado is given each file by name."""
+    add(repo, {"README.md": "# Title\n", "CHANGELOG.md": "No heading.\n", ".hidden/a.md": "No heading.\n", ".gitignore": "ignored.md\n"})
+    (repo / "ignored.md").write_text("No heading.\n")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-mado.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_mado_checks_an_untracked_file(repo: Path, run: Run) -> None:
+    """A Markdown file that isn't committed yet is checked."""
+    (repo / "new.md").write_text("No heading.\n")
+    assert "new.md:1:1: MD041" in run(repo, "run-mado.sh").stdout
+
+
 # --- shellcheck
 
 

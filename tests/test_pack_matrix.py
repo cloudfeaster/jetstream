@@ -131,3 +131,7 @@ def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: t
         page.unlink()
     if LIGHTHOUSE and packs == ("website",):  # once, as it's slow and the site is the same
         run(repo, release.env, "uv", "run", "--no-sync", "run-lighthouse.sh")
+    if "website" in packs:  # the site's Vite reads a config that Node can't: an import with no extension, and an enum
+        (repo / "settings.ts").write_text('enum Site {\n    Url = "https://example.org",\n}\n\nexport const site: string = Site.Url;\n')
+        (repo / "astro.config.mjs").write_text('import { site } from "./settings";\n\nexport default { site, base: "/docs" };\n')
+        assert run(repo, release.env, "uv", "run", "--no-sync", "run-astro-config.sh") == "https://example.org\ndocs\n"
