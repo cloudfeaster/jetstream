@@ -152,9 +152,10 @@ def test_yamllint_fails_bad_yaml(repo: Path, run: Run) -> None:
 # --- json-lint
 
 
-def test_json_lint_passes_jq_formatted_json(repo: Path, run: Run) -> None:
-    """JSON formatted as jq formats it passes."""
-    add(repo, {"a.json": '{\n  "key": [\n    1,\n    2\n  ]\n}\n'})
+@pytest.mark.parametrize("content", ['{\n  "key": [\n    1,\n    2\n  ]\n}\n', "[]\n", "false\n", "null\n"])
+def test_json_lint_passes_jq_formatted_json(repo: Path, run: Run, content: str) -> None:
+    """JSON formatted as jq formats it passes, whatever its one value is."""
+    add(repo, {"a.json": content})
     assert run(repo, "run-json-lint.sh").returncode == 0
 
 
@@ -164,10 +165,12 @@ def test_json_lint_passes_jq_formatted_json(repo: Path, run: Run) -> None:
         ('{"key": [1, 2]}\n', "Unformatted JSON: a.json"),
         ('{\n  "key": 1\n}', "Unformatted JSON: a.json"),  # no final newline
         ('{"key": }\n', "Invalid JSON: a.json"),
+        ("{}\n{}\n", "Invalid JSON: a.json (it must have exactly one value)"),
+        ("", "Invalid JSON: a.json (it must have exactly one value)"),
     ],
 )
 def test_json_lint_fails(repo: Path, run: Run, content: str, message: str) -> None:
-    """Compact JSON, JSON with no final newline and invalid JSON each fail, naming the file."""
+    """Compact JSON, JSON with no final newline, invalid JSON, more than one value and an empty file each fail, naming the file."""
     add(repo, {"a.json": content})
     result: subprocess.CompletedProcess[str] = run(repo, "run-json-lint.sh")
     assert result.returncode == 1
