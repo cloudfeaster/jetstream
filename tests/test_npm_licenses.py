@@ -42,8 +42,8 @@ def test_allows_reads_spdx_expressions(expression: str, allowed: bool) -> None: 
 
 
 def lockfile(direct: dict[str, str], packages: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    """Return a package-lock.json with ``direct`` as the root's dependencies and ``packages`` under node_modules/."""
-    return {"lockfileVersion": 3, "packages": {"": {"dependencies": direct}} | {f"node_modules/{name}": package for name, package in packages.items()}}
+    """Return a package-lock.json with ``direct`` as the root's dependencies, packages/* as its workspaces, and ``packages`` under node_modules/."""
+    return {"lockfileVersion": 3, "packages": {"": {"workspaces": ["packages/*"], "dependencies": direct}} | {f"node_modules/{name}": package for name, package in packages.items()}}
 
 
 def test_mpl_is_allowed_only_in_a_transitive_dependency() -> None:
@@ -55,7 +55,7 @@ def test_mpl_is_allowed_only_in_a_transitive_dependency() -> None:
 
 
 def test_only_product_dependencies_are_checked() -> None:
-    """Dev dependencies, links and the repo's own workspace packages are skipped; an optional product dependency isn't."""
+    """Dev dependencies and the repo's own workspace packages are skipped; an optional product dependency isn't."""
     data: dict[str, Any] = lockfile(
         {},
         {
@@ -66,6 +66,61 @@ def test_only_product_dependencies_are_checked() -> None:
     )
     data["packages"]["packages/linked"] = {"version": "1.0.0", "license": "UNLICENSED"}
     assert npm_licenses.failures(data) == ["node_modules/optional 1.0.0: LGPL-3.0-or-later isn't allowed in a transitive product dependency"]
+
+
+@pytest.mark.parametrize("folder", ["../vendor", "vendor", "packages/a/vendor"])
+@pytest.mark.parametrize(("license_", "allowed"), [("GPL-3.0-only", False), ("MPL-2.0", False), ("MIT", True)])
+def test_a_file_dependency_is_checked(folder: str, license_: str, *, allowed: bool) -> None:
+    """A ``file:`` dependency on a folder that isn't a workspace, outside the repo or in it, is a direct dependency, with its license on the folder's entry."""
+    data: dict[str, Any] = lockfile({"a": f"file:{folder}"}, {"a": {"resolved": folder, "link": True}})
+    data["packages"][folder] = {"name": "a", "version": "1.0.0", "license": license_}
+    assert npm_licenses.failures(data) == ([] if allowed else [f"{folder} 1.0.0: {license_} isn't allowed in a direct product dependency"])
+
+
+def test_a_dev_file_dependency_is_not_checked() -> None:
+    """A ``file:`` dev dependency is a development tool; npm marks the folder's entry as dev."""
+    data: dict[str, Any] = lockfile({}, {"a": {"resolved": "../vendor", "link": True}})
+    data["packages"]["../vendor"] = {"name": "a", "version": "1.0.0", "license": "GPL-3.0-only", "dev": True}
+    assert npm_licenses.failures(data) == []
+
+
+def test_a_file_dependencys_own_dependency_is_transitive() -> None:
+    """What a ``file:`` dependency needs is transitive, so MPL-2.0 is allowed in it, and GPL isn't."""
+    data: dict[str, Any] = lockfile({"a": "file:vendor"}, {"a": {"resolved": "vendor", "link": True}})
+    data["packages"]["vendor"] = {"name": "a", "version": "1.0.0", "license": "MIT", "dependencies": {"b": "1.0.0", "c": "1.0.0"}}
+    data["packages"]["vendor/node_modules/b"] = {"version": "1.0.0", "license": "MPL-2.0"}
+    data["packages"]["vendor/node_modules/c"] = {"version": "1.0.0", "license": "GPL-3.0-only"}
+    assert npm_licenses.failures(data) == ["vendor/node_modules/c 1.0.0: GPL-3.0-only isn't allowed in a transitive product dependency"]
+
+
+@pytest.mark.parametrize(
+    ("path", "workspaces", "own"),
+    [
+        ("", [], True),
+        ("site", ["site"], True),
+        ("site", ["./site/"], True),
+        ("packages/a", ["packages/*"], True),
+        ("packages/a/b", ["packages/*"], False),
+        ("packages/a/b", ["packages/**"], True),
+        ("packages/a", ["packages/*", "!packages/a"], False),
+        ("packages/a", ["!packages/a", "packages/*"], True),
+        ("packages/a", [], False),
+        ("../vendor", ["**"], False),
+        ("node_modules/a", ["**"], False),
+        ("packages/a/node_modules/b", ["packages/**"], False),
+    ],
+)
+def test_is_own(path: str, workspaces: list[str], own: bool) -> None:  # noqa: FBT001 (a parametrized case)
+    """The repo's own packages are the root and those its workspaces patterns match, the last match deciding, and never one outside the repo or in node_modules/."""
+    assert npm_licenses.is_own(path, workspaces) is own
+
+
+def test_workspaces_can_be_an_object() -> None:
+    """The root's workspaces can be ``{"packages": [...]}`` too."""
+    data: dict[str, Any] = lockfile({"a": "*"}, {"a": {"resolved": "packages/a", "link": True}})
+    data["packages"][""]["workspaces"] = {"packages": ["packages/*"]}
+    data["packages"]["packages/a"] = {"version": "1.0.0"}
+    assert npm_licenses.failures(data) == []
 
 
 @pytest.mark.parametrize(
