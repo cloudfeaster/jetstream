@@ -3,9 +3,9 @@
 A site's product dependencies are the packages in ``package-lock.json`` that
 aren't dev dependencies: what its ``dependencies`` bring in, which can end up
 in the built site. Each must have a license licensing.md allows in a product:
-MIT, Apache-2.0, a BSD license, ISC or 0BSD, or MPL-2.0 for a transitive
-dependency only (decision 24). ``devDependencies``, Astro and the rest of the
-build toolchain, are development tools, so they aren't checked.
+MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC or 0BSD, or MPL-2.0 for a
+transitive dependency only (decision 24). ``devDependencies``, Astro and the
+rest of the build toolchain, are development tools, so they aren't checked.
 
 npm writes each package's license into the lockfile, as an SPDX expression
 such as ``MIT`` or ``(MIT OR Apache-2.0)``, so nothing needs installing.

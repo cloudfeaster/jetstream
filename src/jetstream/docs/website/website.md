@@ -9,7 +9,7 @@ The website pack is for a repo that's an [Astro](https://astro.build/) site. The
 
 A package whose code ships to the browser, and so ends up in the built site, goes in `dependencies`. Everything that only builds or checks the site, Astro included, goes in `devDependencies`: under [licensing.md](../core/licensing.md), those are development tools, and the products are the `dependencies`.
 
-The `npm-licenses` hook checks the licenses of what `dependencies` bring in, read from `package-lock.json`, which records each package's license: MIT, Apache-2.0, a BSD license, ISC or 0BSD, or MPL-2.0 for a package that's only there because another needs it. `devDependencies` aren't checked. A package that fails and only builds the site goes in `devDependencies`; one that ships needs replacing, or an exception, which is jetstream's to make.
+The `npm-licenses` hook checks the licenses of what `dependencies` bring in, read from `package-lock.json`, which records each package's license: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC or 0BSD, or MPL-2.0 for a package that's only there because another needs it. `devDependencies` aren't checked. A package that fails and only builds the site goes in `devDependencies`; one that ships needs replacing, or an exception, which is jetstream's to make.
 
 ## What the pack adds
 
