@@ -1,0 +1,9 @@
+{
+  "name": "jetstream-astro-check",
+  "private": true,
+  "description": "astro check, which jetstream's website pack runs on a site. run-astro-check.sh installs it into .venv with npm ci. TypeScript is its peer dependency, so package-lock.json pins the newest one it supports.",
+  "license": "MIT",
+  "dependencies": {
+    "@astrojs/check": "0.9.12"
+  }
+}

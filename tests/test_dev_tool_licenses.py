@@ -32,13 +32,13 @@ NOT_ALLOWED: Final[frozenset[License]] = frozenset({License.AGPL_3_PLUS, License
 AGPL: Final[tuple[str, ...]] = ("AGPL", "AFFERO")
 
 
-# The Node tools jetstream installs (Lighthouse CI), from its own lockfile.
-NODE_LOCKFILE: Final[dict[str, Any]] = json.loads((ROOT / "src" / "jetstream" / "node" / "package-lock.json").read_text())
-# The SPDX IDs in that lockfile that are open-source licenses. Their packages
+# The Node tools jetstream installs (astro check and Lighthouse CI), from its own lockfiles, by folder.
+NODE_LOCKFILES: Final[dict[str, dict[str, Any]]] = {path.parent.name: json.loads(path.read_text()) for path in sorted((ROOT / "src" / "jetstream" / "node").glob("*/package-lock.json"))}
+# The SPDX IDs in those lockfiles that are open-source licenses. Their packages
 # are compared by ID, not with licensecheck, which reads FSL-1.1-Apache-2.0
 # (source-available, not open source) as Apache and doesn't know BlueOak. A
 # new ID fails until it's reviewed and added here, or, if it isn't open
-# source, the package is stubbed out (src/jetstream/node/stubs/).
+# source, the package is stubbed out (src/jetstream/node/lighthouse/stubs/).
 NODE_OPEN_SOURCE: Final[frozenset[str]] = frozenset(
     {"0BSD", "Apache-2.0", "BlueOak-1.0.0", "BSD-2-Clause", "BSD-3-Clause", "CC0-1.0", "ISC", "MIT", "MPL-2.0", "PSF-2.0"},
 )
@@ -92,15 +92,15 @@ def test_binary_license_is_allowed(tool: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "path",
+    ("tool", "path"),
     # jetstream's own stubs (links to stubs/) are MIT, and aren't third-party
-    sorted(path for path, package in NODE_LOCKFILE["packages"].items() if "node_modules/" in path and not package.get("link")),
+    sorted((tool, path) for tool, lockfile in NODE_LOCKFILES.items() for path, package in lockfile["packages"].items() if "node_modules/" in path and not package.get("link")),
 )
-def test_node_tool_license_is_open_source(path: str) -> None:
-    """Every package in jetstream's Node lockfile has an open-source license, by its SPDX ID."""
-    license_: object = NODE_LOCKFILE["packages"][path].get("license")
-    assert isinstance(license_, str), f"{path}: no license"
-    assert npm_licenses.allows(license_, NODE_OPEN_SOURCE), f"{path}: license {license_!r} needs a review (NODE_OPEN_SOURCE)"
+def test_node_tool_license_is_open_source(tool: str, path: str) -> None:
+    """Every package in jetstream's Node lockfiles has an open-source license, by its SPDX ID."""
+    license_: object = NODE_LOCKFILES[tool]["packages"][path].get("license")
+    assert isinstance(license_, str), f"{tool} {path}: no license"
+    assert npm_licenses.allows(license_, NODE_OPEN_SOURCE), f"{tool} {path}: license {license_!r} needs a review (NODE_OPEN_SOURCE)"
 
 
 @pytest.mark.parametrize(("license_id", "open_source"), [("FSL-1.1-Apache-2.0", False), ("BUSL-1.1", False), ("BlueOak-1.0.0", True), ("(MIT OR CC0-1.0)", True)])

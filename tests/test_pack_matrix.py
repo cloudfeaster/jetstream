@@ -93,6 +93,12 @@ def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: t
     if "website" in packs:
         run(repo, release.env, "node_modules/.bin/astro", "build")
         run(repo, release.env, "uv", "run", "--no-sync", "run-lychee.sh")
+        page: Path = repo / "src" / "pages" / "wrong.astro"
+        page.write_text('---\nconst count: number = "one";\n---\n<p>{count}</p>\n')
+        wrong: subprocess.CompletedProcess[str] = subprocess.run(["uv", "run", "--no-sync", "run-astro-check.sh"], cwd=repo, env=release.env, capture_output=True, text=True, check=False)  # noqa: S607 (uv from PATH)
+        assert wrong.returncode == 1
+        assert "wrong.astro" in wrong.stdout  # jetstream's TypeScript checks the site's pages
+        page.unlink()
     if packs == ("website",):  # once, as it's slow and the site is the same
         if CHROME is None:
             pytest.skip("everything but Lighthouse passed: it needs Google's Chrome, as GitHub's runners have")
