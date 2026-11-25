@@ -9,7 +9,7 @@ Two rules are deliberately left out:
 
 Conventions the rules enforce, among others:
 
-- one `#` heading, on the file's first line;
+- one `#` heading, on the file's first line, except in a page whose front matter has a `title`, such as a site's;
 - headings increase one level at a time;
 - a blank line around headings, lists and fenced code blocks;
 - every fenced code block names its language (`bash`, `text`, ...);
