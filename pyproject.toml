@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cloudfeaster-jetstream"
-version = "0.15.0"
+version = "0.16.0"
 description = "Shared development infrastructure for Cloudfeaster repos: one pinned toolchain, its configuration, CI workflows and Claude Code skills"
 readme = "README.md"
 license = "MIT"

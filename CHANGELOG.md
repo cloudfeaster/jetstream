@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/cloudfeaster/jetstream/compare/v0.15.0...v0.16.0) (2026-11-25)
+
+
+### Features
+
+* allow OFL-1.1 for a font in a product ([#133](https://github.com/cloudfeaster/jetstream/issues/133)) ([2446c69](https://github.com/cloudfeaster/jetstream/commit/2446c691167966857d3a12debfcc2d8271d9454a))
+
+
+### Bug Fixes
+
+* check a site's Markdown pages, and read its Astro config as Astro does ([#132](https://github.com/cloudfeaster/jetstream/issues/132)) ([6bbf892](https://github.com/cloudfeaster/jetstream/commit/6bbf89211387d4410d5befb760b50c5e9fea86af))
+
 ## [0.15.0](https://github.com/cloudfeaster/jetstream/compare/v0.14.0...v0.15.0) (2026-11-25)
 
 
