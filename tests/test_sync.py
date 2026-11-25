@@ -110,7 +110,48 @@ def test_only_jetstream_gets_its_own_pack(repo: Path) -> None:
     packs: tuple[str, ...] = sync.read_packs(repo)
     assert packs == ("core", sync.SELF_PACK)
     dependabot: dict[str, Any] = yaml.safe_load(sync.expected(packs).files[".github/dependabot.yml"].content)
-    assert [(update["package-ecosystem"], update["directory"]) for update in dependabot["updates"]] == [("uv", "/"), ("github-actions", "/"), ("npm", "/src/jetstream/node"), ("npm", "/src/jetstream/starters/website")]
+    assert [(update["package-ecosystem"], update.get("directory")) for update in dependabot["updates"]] == [("uv", "/"), ("github-actions", None), ("npm", "/src/jetstream/node"), ("npm", "/src/jetstream/starters/website")]
+
+
+def test_jetstreams_dependabot_covers_every_folder_with_actions() -> None:
+    """Dependabot updates the actions in every workflow jetstream ships, with the copies sync writes in jetstream itself."""
+    dependabot: dict[str, Any] = yaml.safe_load(sync.expected(("core", sync.SELF_PACK)).files[".github/dependabot.yml"].content)
+    directories: set[str] = {directory for update in dependabot["updates"] if update["package-ecosystem"] == "github-actions" for directory in update["directories"]}
+    workflows: list[Path] = [path for folder in ("files", "parts") for path in (ROOT / "src" / "jetstream" / folder).rglob("*.y*ml") if " uses: " in path.read_text()]
+    assert directories == {f"/{path.parent.relative_to(ROOT)}" for path in workflows} | {"/.github/workflows"}
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        (".github/workflows/release.yaml", ("core", sync.ACTIONS_PACK)),
+        (".github/workflows/release.yml", ("core", sync.ACTIONS_PACK)),
+        ("action.yml", ("core", sync.ACTIONS_PACK)),
+        ("action.yaml", ("core", sync.ACTIONS_PACK)),
+        (".github/workflows/jetstream-lint.yaml", ("core",)),
+        (".github/workflows/README.md", ("core",)),
+        (None, ("core",)),
+    ],
+)
+def test_only_a_repo_with_its_own_actions_gets_their_updates(repo: Path, path: str | None, expected: tuple[str, ...]) -> None:
+    """A repo with a workflow jetstream doesn't own, or an action, gets the actions pack; a Dependabot run with nothing to update would fail."""
+    if path is not None:
+        (repo / path).parent.mkdir(parents=True, exist_ok=True)
+        (repo / path).write_text("---\n")
+    assert sync.read_packs(repo) == expected
+
+
+def test_dependabot_leaves_jetstreams_workflows_alone(repo: Path) -> None:
+    """Dependabot's updates to the actions in a repo's own workflows leave out every workflow jetstream writes; its first one makes check fail until sync."""
+    sync.sync(repo)
+    (repo / ".github" / "workflows" / "release.yaml").write_text("---\n")
+    assert sync.check(repo) == [".github/dependabot.yml differs from what jetstream writes"]
+    sync.sync(repo)
+    assert sync.check(repo) == []
+    dependabot: dict[str, Any] = yaml.safe_load((repo / ".github" / "dependabot.yml").read_text())
+    (actions,) = (update for update in dependabot["updates"] if update["package-ecosystem"] == "github-actions")
+    workflows: list[Path] = sorted((repo / ".github" / "workflows").iterdir())
+    assert [path.name for path in workflows if not any(path.relative_to(repo).full_match(glob) for glob in actions["exclude-paths"])] == ["release.yaml"]
 
 
 def test_a_repo_cant_name_jetstreams_own_pack(repo: Path) -> None:
@@ -208,7 +249,7 @@ def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
     assert [hook["id"] for hook in hooks["repos"][0]["hooks"]][-3:] == ["licensecheck", "astro-check", "npm-licenses"]
     assert hooks["repos"][0]["hooks"][-2]["always_run"]  # astro check checks the whole project, wherever a commit changes it
     dependabot: dict[str, Any] = yaml.safe_load(want.files[".github/dependabot.yml"].content)
-    assert [update["package-ecosystem"] for update in dependabot["updates"]] == ["uv", "github-actions", "npm"]
+    assert [update["package-ecosystem"] for update in dependabot["updates"]] == ["uv", "npm"]
     assert want.gitignore_block.splitlines()[-4:] == ["node_modules/", ".astro/", ".lighthouseci/", sync.GITIGNORE_END]
     ci: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-website-ci.yaml"].content)
     assert ci["jobs"]["deploy"]["if"] == "needs.build.outputs.deploy == 'true'"  # only once the repo's Pages source is GitHub Actions
@@ -285,8 +326,9 @@ def test_check_names_changed_missing_and_non_executable_files(synced: Path) -> N
 def test_sync_deletes_jetstream_workflows_the_release_does_not_write(synced: Path) -> None:
     """A jetstream-*.yaml workflow the release doesn't write is deleted; the repo's own workflows are kept."""
     workflows: Path = synced / ".github" / "workflows"  # sync wrote jetstream-lint.yaml there
-    (workflows / "jetstream-old.yaml").write_text("old\n")
     (workflows / "deploy.yaml").write_text("the repo's own\n")
+    sync.sync(synced)  # the repo's first workflow of its own adds its Dependabot updates
+    (workflows / "jetstream-old.yaml").write_text("old\n")
     assert sync.check(synced) == [".github/workflows/jetstream-old.yaml isn't written by this jetstream release"]
 
     assert sync.sync(synced) == [".github/workflows/jetstream-old.yaml (deleted)"]

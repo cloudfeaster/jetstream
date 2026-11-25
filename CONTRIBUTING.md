@@ -47,6 +47,10 @@ npm install --package-lock-only --ignore-scripts --min-release-age=7 --save-exac
 
 `overrides` replaces Sentry's CLI (`sentry`), which Lighthouse's error reporting brings in, with an empty package of jetstream's own (`stubs/sentry/`): its license, FSL-1.1-Apache-2.0, isn't open source. A package that does the same in future goes the same way, or Lighthouse CI waits.
 
+## Keeping the actions current
+
+Dependabot updates the actions in the workflows jetstream ships (`src/jetstream/files/<pack>/.github/workflows/` and `src/jetstream/parts/core/nightly-sca.yaml`) and in `.github/workflows/`, in one pull request, so the sources and the copies `jetstream sync` writes stay the same. Its entry, in jetstream's own pack, names each folder; a test fails if one is missing. Other repos get updates only for their own workflows (`parts/actions/`).
+
 ## Keeping a new website's versions current
 
 `src/jetstream/starters/website/package.json` pins the npm packages a new site starts on. Dependabot updates them, through another npm entry in jetstream's own pack, and the pack matrix tests each update. There's no `package-lock.json`: a new site writes its own.

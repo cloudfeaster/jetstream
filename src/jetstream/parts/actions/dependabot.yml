@@ -1,0 +1,25 @@
+---
+# Only a repo with workflows, or an action, of its own gets this pack
+# (sync.read_packs): a Dependabot run that finds no files fails. `jetstream
+# sync` appends what follows the marker to the earlier packs' updates list; the
+# lines above it make this file valid YAML.
+version: 2
+updates:
+  # >>> jetstream: appended
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    exclude-paths:
+      - ".github/workflows/jetstream-*.yaml"  # jetstream's, updated by its releases
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
