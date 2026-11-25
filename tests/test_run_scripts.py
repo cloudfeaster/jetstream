@@ -872,6 +872,43 @@ def test_install_node_tool_needs_its_arguments(repo: Path, run: Run) -> None:
     assert "usage: run-install-node-tool.sh <tool> <command>" in result.stderr
 
 
+@pytest.fixture
+def no_node_path(system_path: str, tmp_path: Path) -> str:
+    """Return the PATH the scripts are tested with, without Node (and npm isn't on it either)."""
+    bin_dir: Path = tmp_path / "no-node"
+    bin_dir.mkdir()
+    for command in Path(system_path).iterdir():
+        if command.name != "node":
+            (bin_dir / command.name).symlink_to(command.resolve())
+    return str(bin_dir)
+
+
+@pytest.mark.parametrize("installed", [True, False], ids=["tools-installed", "tools-not-installed"])
+@pytest.mark.parametrize("script", ["run-astro-check.sh", "run-lighthouse.sh", "run-lychee.sh"])
+def test_a_script_that_needs_node_says_so(repo: Path, no_node_path: str, node_tool: Callable[[str], Path], script: str, *, installed: bool) -> None:
+    """Without Node, a script that needs it fails with one line that says to install it."""
+    for tool, command in (("astro-check", "astro-check"), ("lighthouse", "lhci")):
+        tools: Path = node_tool(tool)
+        if installed:
+            install_fake_tool(tools, tool, command)
+    install_fake_astro(repo)
+    build_site(repo, {}, [])
+    result: subprocess.CompletedProcess[str] = run_script(no_node_path, repo, script)
+    assert result.returncode == 1
+    assert re.fullmatch(r"\*\*\* run-[a-z-]+\.sh: node isn't installed: install Node, at the major version in \.nvmrc\n", result.stderr), result.stderr
+
+
+def test_installing_a_node_tool_needs_npm(repo: Path, run: Run, node_tool: Callable[[str], Path]) -> None:
+    """With Node but no npm, installing a tool fails with one line, and leaves what's there."""
+    tools: Path = node_tool("lighthouse")
+    install_fake_tool(tools, "lighthouse", "lhci")
+    (tools / "installed.json").write_text("{}\n")  # another release's
+    result: subprocess.CompletedProcess[str] = run(repo, "run-install-node-tool.sh", "lighthouse", "lhci")
+    assert result.returncode == 1
+    assert result.stderr == "*** run-install-node-tool.sh: npm, which comes with Node, isn't installed: install Node, at the major version in .nvmrc\n"
+    assert (tools / "installed.json").read_text() == "{}\n"
+
+
 # --- astro check (website pack)
 
 

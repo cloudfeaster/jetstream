@@ -1,6 +1,7 @@
 """Tests for the build hook in hatch_build.py."""
 
 import hashlib
+import http.client
 import importlib.machinery
 import importlib.util
 import io
@@ -160,17 +161,26 @@ def binary_for(archive: Path, sha256: str, member: str = "dir/tool") -> "hatch_b
     return hatch_build.Binary(name="tool", version="1.2.3", path=f"owner/tool/releases/download/v1.2.3/{archive.name}", member=member, sha256=sha256)
 
 
+class Response(io.BytesIO):
+    """A response with ``content``, whose Content-Length is ``full_size``."""
+
+    def __init__(self, content: bytes, full_size: int) -> None:
+        """Set its headers."""
+        super().__init__(content)
+        self.headers: dict[str, str] = {"Content-Length": str(full_size)}
+
+
 @pytest.fixture
 def github(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Serve each download from the file in ``tmp_path`` with its asset's name, or fail as GitHub would."""
 
-    def fake_urlopen(url: str, **_kwargs: object) -> io.BytesIO:
+    def fake_urlopen(url: str, **_kwargs: object) -> Response:
         assert url.startswith("https://github.com/owner/tool/releases/download/v1.2.3/"), url
         asset: Path = tmp_path / url.rsplit("/", 1)[-1]
         if not asset.is_file():
             reason: str = "404 Not Found"
             raise urllib.error.URLError(reason)
-        return io.BytesIO(asset.read_bytes())
+        return Response(asset.read_bytes(), asset.stat().st_size)
 
     monkeypatch.setattr(hatch_build.urllib.request, "urlopen", fake_urlopen)
 
@@ -225,6 +235,44 @@ def test_download_fails_cleanly_when_the_download_fails(tmp_path: Path) -> None:
         hatch_build.download(binary_for(tmp_path / "missing.tar.gz", "0" * 64), cache_dir)
     assert_one_line_failure(exc_info, "can't download tool 1.2.3 from https://github.com/owner/tool/releases/download/v1.2.3/missing.tar.gz: 404 Not Found")
     assert list(cache_dir.iterdir()) == []
+
+
+def test_download_says_it_was_cut_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A download that stops part way is reported as that, not as the wrong SHA-256, and leaves nothing in the cache."""
+    cache_dir: Path = tmp_path / "cache"
+    monkeypatch.setattr(hatch_build.urllib.request, "urlopen", lambda _url, **_kwargs: Response(b"half", 8))
+    with pytest.raises(SystemExit) as exc_info:
+        hatch_build.download(binary_for(tmp_path / "tool.tar.gz", "0" * 64), cache_dir)
+    assert_one_line_failure(exc_info, "can't download tool 1.2.3 from https://github.com/owner/tool/releases/download/v1.2.3/tool.tar.gz: it stopped after 4 of 8 bytes")
+    assert list(cache_dir.iterdir()) == []
+
+
+@pytest.mark.parametrize("error", [http.client.IncompleteRead(b"half", 4), http.client.BadStatusLine("junk")], ids=["IncompleteRead", "BadStatusLine"])
+def test_download_fails_cleanly_on_a_garbled_response(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: http.client.HTTPException) -> None:
+    """A response that isn't valid HTTP stops the build with one line and leaves nothing in the cache."""
+
+    def fake_urlopen(_url: str, **_kwargs: object) -> Response:
+        raise error
+
+    cache_dir: Path = tmp_path / "cache"
+    monkeypatch.setattr(hatch_build.urllib.request, "urlopen", fake_urlopen)
+    with pytest.raises(SystemExit) as exc_info:
+        hatch_build.download(binary_for(tmp_path / "tool.tar.gz", "0" * 64), cache_dir)
+    assert_one_line_failure(exc_info, f"can't download tool 1.2.3 from https://github.com/owner/tool/releases/download/v1.2.3/tool.tar.gz: {error}")
+    assert list(cache_dir.iterdir()) == []
+
+
+def test_a_failed_build_leaves_no_temporary_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The folder the binaries are extracted into goes when a download fails, as it does when the build finishes."""
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    work: Path = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.setattr(hatch_build.tempfile, "tempdir", str(work))
+    monkeypatch.setattr(hatch_build.urllib.request, "urlopen", lambda _url, **_kwargs: Response(b"half", 8))
+    hook: Any = hatch_build.JetstreamBuildHook(str(ROOT), {}, None, None, str(tmp_path), "wheel")
+    with pytest.raises(SystemExit):
+        hook.initialize("standard", {"shared_scripts": {}})
+    assert list(work.iterdir()) == []
 
 
 def test_extract_writes_an_executable(tmp_path: Path) -> None:
