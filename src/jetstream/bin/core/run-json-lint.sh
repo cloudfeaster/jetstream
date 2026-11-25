@@ -36,6 +36,10 @@ while IFS= read -r -d '' file; do
     if ! jq . "${file}" > /dev/null 2>&1; then
         echo "Invalid JSON: ${file}" >&2
         invalid=$((invalid + 1))
+    elif ! jq --slurp --exit-status 'length == 1' "${file}" > /dev/null; then
+        # jq reads a stream of values, but a JSON document is exactly one
+        echo "Invalid JSON: ${file} (it must have exactly one value)" >&2
+        invalid=$((invalid + 1))
     elif ! jq . "${file}" | cmp -s - "${file}"; then
         echo "Unformatted JSON: ${file} (fix with: jq . ${file} > tmp && mv tmp ${file})" >&2
         unformatted=$((unformatted + 1))
