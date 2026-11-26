@@ -5,6 +5,7 @@ import email.message
 import importlib.machinery
 import importlib.util
 import io
+import re
 import types
 import urllib.error
 import urllib.request
@@ -21,7 +22,8 @@ assert _spec.loader is not None
 update_binary: types.ModuleType = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(update_binary)
 
-# The real fetch_text, before the autouse downloads fixture fakes it.
+# The real fetch and fetch_text, before the autouse downloads fixture fakes them.
+FETCH: Final[Callable[[str], tuple[str, str]]] = update_binary.fetch
 FETCH_TEXT: Final[Callable[[str], str]] = update_binary.fetch_text
 
 NOW: Final[dt.datetime] = dt.datetime(2026, 11, 17, tzinfo=dt.UTC)
@@ -169,17 +171,31 @@ def test_update_with_a_checksums_file_per_asset(api: dict[str, Any], downloads: 
     assert update_binary.update(pins, "tool", None, NOW) == "tool: 1.0.0 -> 1.1.0"
 
 
+class Response(io.BytesIO):
+    """A urlopen response with ``body``, that ended at ``url``."""
+
+    def __init__(self, url: str, body: bytes) -> None:
+        """Make a response from ``url`` with ``body``."""
+        super().__init__(body)
+        self.url: str = url
+
+    def geturl(self) -> str:
+        """Return the URL the request ended at, after any redirects."""
+        return self.url
+
+
 def test_fetch_text_gets_the_asset_from_github(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A release asset is fetched from https://github.com/, by its path there."""
+    """A release asset is fetched from https://github.com/, by its path there; fetch also says where it ended."""
     requested: list[str] = []
 
-    def fake_urlopen(url: str, **_kwargs: object) -> io.BytesIO:
+    def fake_urlopen(url: str, **_kwargs: object) -> Response:
         requested.append(url)
-        return io.BytesIO(b"abc  tool.tar.gz\n")
+        return Response(url.replace("latest", "tag/v1.0.0"), b"abc  tool.tar.gz\n")
 
     monkeypatch.setattr(update_binary.urllib.request, "urlopen", fake_urlopen)
     assert FETCH_TEXT("owner/tool/releases/download/v1.0.0/SHA256SUMS") == "abc  tool.tar.gz\n"
-    assert requested == ["https://github.com/owner/tool/releases/download/v1.0.0/SHA256SUMS"]
+    assert FETCH("owner/tool/releases/latest")[0] == "https://github.com/owner/tool/releases/tag/v1.0.0"
+    assert requested == ["https://github.com/owner/tool/releases/download/v1.0.0/SHA256SUMS", "https://github.com/owner/tool/releases/latest"]
 
 
 def test_parse_checksums() -> None:
@@ -191,6 +207,16 @@ def test_parse_checksums() -> None:
 
 
 @pytest.mark.usefixtures("api")
+def test_update_fails_when_the_license_changes(api: dict[str, Any]) -> None:
+    """A bump compares the license too, since the nightly --check can't for a tool whose org has an IP allow list."""
+    api["repos/owner/tool/releases/latest"] = release("1.1.0", days_old=8)
+    api["repos/owner/tool"] = {"license": {"spdx_id": "BUSL-1.1"}}
+    pins: tomlkit.TOMLDocument = tomlkit.parse(PINS)
+    with pytest.raises(update_binary.UpdateError, match=re.escape("GitHub reports the license BUSL-1.1, not MIT")):
+        update_binary.update(pins, "tool", None, NOW)
+    assert pins["tool"]["version"] == "1.0.0"
+
+
 def test_update_fails_on_unknown_tool() -> None:
     """Naming a tool that isn't in binaries.toml is an error."""
     with pytest.raises(update_binary.UpdateError, match="no tool nope"):
@@ -306,38 +332,91 @@ IP_ALLOW_LIST: Final[bytes] = b'{"message": "Although you appear to have the cor
 
 
 @pytest.mark.parametrize(
-    ("body", "retried"),
+    ("body", "allow_list"),
     [
         (IP_ALLOW_LIST, True),
         (b'{"message": "API rate limit exceeded for installation."}', False),
     ],
 )
-def test_github_api_retries_without_the_token_only_for_an_ip_allow_list(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    body: bytes,
-    *,
-    retried: bool,
-) -> None:
-    """Only an IP allow list refusal is retried without GITHUB_TOKEN; other 403s fail."""
+def test_github_api_tells_an_ip_allow_list_from_other_refusals(monkeypatch: pytest.MonkeyPatch, body: bytes, *, allow_list: bool) -> None:
+    """An IP allow list's refusal of GITHUB_TOKEN is an AllowListError, saying to run without it; another 403 is an UpdateError; neither is retried."""
     monkeypatch.setenv("GITHUB_TOKEN", "a-token")
     sent: list[str | None] = []  # each request's Authorization header
 
     def fake_urlopen(request: urllib.request.Request, **_kwargs: object) -> io.BytesIO:
         sent.append(request.get_header("Authorization"))
-        if request.has_header("Authorization"):
-            raise http_error(403, "Forbidden", body, {"x-ratelimit-remaining": "4976"})
-        return io.BytesIO(b'{"tag_name": "v1.0.0"}')
+        raise http_error(403, "Forbidden", body, {"x-ratelimit-remaining": "4976"})
 
     monkeypatch.setattr(update_binary.urllib.request, "urlopen", fake_urlopen)
-    if retried:
-        assert update_binary.github_api("x") == {"tag_name": "v1.0.0"}
-        assert sent == ["Bearer a-token", None]
-        assert "retrying without GITHUB_TOKEN" in capsys.readouterr().err
+    with pytest.raises(update_binary.UpdateError) as raised:
+        update_binary.github_api("x")
+    assert isinstance(raised.value, update_binary.AllowListError) is allow_list
+    assert str(raised.value).endswith("; run it without GITHUB_TOKEN") is allow_list
+    assert sent == ["Bearer a-token"]
+
+
+ATOM: Final[str] = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>tag:github.com,2008:https://github.com/owner/tool/releases</id>
+  <updated>2026-11-10T00:00:00Z</updated>
+  <entry>
+    <id>tag:github.com,2008:Repository/123/v1.2.0-rc.1</id>
+    <updated>2026-11-15T00:00:00Z</updated>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/123/v1.1.0</id>
+    <updated>2026-11-09T00:00:00Z</updated>
+    <title>v1.1.0</title>
+  </entry>
+</feed>
+"""
+
+
+@pytest.fixture
+def web(monkeypatch: pytest.MonkeyPatch, downloads: dict[str, str]) -> dict[str, str]:
+    """Fake github.com's pages: /releases/latest redirects to the URL this returns, by repo, and /releases.atom is ATOM."""
+    latest: dict[str, str] = {"owner/tool": "https://github.com/owner/tool/releases/tag/v1.1.0"}
+    downloads["owner/tool/releases.atom"] = ATOM
+
+    def fake_fetch(path: str) -> tuple[str, str]:
+        return latest[path.removesuffix("/releases/latest")], "<html></html>"
+
+    monkeypatch.setattr(update_binary, "fetch", fake_fetch)
+    return latest
+
+
+@pytest.mark.parametrize(
+    ("url", "result"),
+    [
+        ("https://github.com/owner/tool/releases/tag/v1.1.0", {"tag_name": "v1.1.0", "published_at": "2026-11-09T00:00:00Z"}),
+        ("https://github.com/new-owner/tool/releases/tag/v1.1.0", {"tag_name": "v1.1.0", "published_at": "2026-11-09T00:00:00Z"}),
+        ("https://github.com/owner/tool/releases", "went to https://github.com/owner/tool/releases, not a release"),
+        ("https://github.com/owner/tool/releases/tag/v0.9.0", "releases.atom has no release v0.9.0"),
+    ],
+    ids=["latest", "renamed-repo", "no-release", "not-in-the-feed"],
+)
+def test_latest_release_from_web(web: dict[str, str], url: str, result: dict[str, str] | str) -> None:
+    """The tag is where /releases/latest redirects, under the repo's new name if it moved; the date is that tag's in releases.atom, not the newest entry's."""
+    web["owner/tool"] = url
+    if isinstance(result, dict):
+        assert update_binary.latest_release_from_web("owner/tool") == result
     else:
-        with pytest.raises(update_binary.UpdateError, match="rate limit exceeded"):
-            update_binary.github_api("x")
-        assert sent == ["Bearer a-token"]
+        with pytest.raises(update_binary.UpdateError, match=re.escape(result)):
+            update_binary.latest_release_from_web("owner/tool")
+
+
+@pytest.mark.usefixtures("web")
+def test_check_reads_the_web_when_an_ip_allow_list_refuses_the_api(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """When the API refuses GITHUB_TOKEN for an IP allow list, the release comes from github.com, its cooldown still applies, and the license isn't compared."""
+
+    def refuse(path: str) -> NoReturn:
+        msg: str = f"GitHub API {path}: 403 Forbidden: ... IP allow list ...; run it without GITHUB_TOKEN"
+        raise update_binary.AllowListError(msg)
+
+    monkeypatch.setattr(update_binary, "github_api", refuse)
+    assert update_binary.check(tomlkit.parse(PINS), NOW, verbose=True) == ["tool 1.0.0 is outdated: 1.1.0 was released 2026-11-09; run bin/update-binary.py tool"]
+    assert capsys.readouterr().out == "tool: pinned 1.0.0; latest 1.1.0 (2026-11-09): needs updating; license not compared, as the org's IP allow list refuses the API here, so bumping it compares it\n"
+    assert update_binary.check(tomlkit.parse(PINS), NOW - dt.timedelta(days=2)) == []  # in the cooldown
 
 
 def test_version_from_tag() -> None:
