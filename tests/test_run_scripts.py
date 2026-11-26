@@ -1188,6 +1188,15 @@ def test_lychee_checks_the_sites_own_links_however_site_is_written(repo: Path, r
     assert "1 Error" in result.stdout
 
 
+@pytest.mark.parametrize("link", ["https://[2001:db8::1]/docs/missing/", "//[2001:db8::1]/docs/missing/"], ids=["absolute", "scheme-relative"])
+def test_lychee_checks_the_sites_own_links_when_its_host_is_an_ipv6_address(repo: Path, run: Run, link: str) -> None:
+    """A site whose host is an IPv6 literal, whose brackets are regex metacharacters, has its own broken links fail offline rather than be skipped."""
+    build_site(repo, {"site": "https://[2001:DB8:0::1]", "base": "/docs"}, [link])
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == LYCHEE_BROKEN_LINKS
+    assert "1 Error" in result.stdout
+
+
 def test_lychee_reads_a_typescript_config(repo: Path, run: Run) -> None:
     """An astro.config.ts is read by stripping its types."""
     build_site(repo, {}, ["/docs/about/"])
