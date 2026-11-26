@@ -63,11 +63,13 @@ fi
 remap=()
 if [[ -n "${site}" ]]; then
     # the site's own absolute and scheme-relative links are checked against
-    # dist/, not the deployed site (site is a scheme, host and port, so . is
-    # the only regex character in it)
-    host="${site#*://}"
-    remap+=(--remap "^${site//./\\.}/ file://${root}/")
-    remap+=(--remap "^file://${host//./\\.}/ file://${root}/")
+    # dist/, not the deployed site (with the regex metacharacters in site
+    # escaped, such as an IPv6 host's brackets; ${site//...} can't refer to
+    # the character it matched before Bash 5.2)
+    # shellcheck disable=SC2001
+    site_regex="$(sed 's/[][\\.+*?(){}|^$]/\\&/g' <<< "${site}")"
+    remap+=(--remap "^${site_regex}/ file://${root}/")
+    remap+=(--remap "^file://${site_regex#*://}/ file://${root}/")
 fi
 scheme="${site%%://*}"
 remap+=(--remap "^file://([^/]+)/ ${scheme:-https}://\$1/")
