@@ -1,0 +1,15 @@
+# Licenses of Python packages whose metadata doesn't say clearly which license
+# they have, for the python pack's license check (python_licenses.py), which
+# reads every other package's license from its metadata.
+#
+# Each is the SPDX expression a review of the package's own license file
+# found, with the version reviewed and where its license file is. A package
+# goes here only once someone has read that file: never from its metadata or
+# its name. Like every license exception, a new one is a change to jetstream,
+# not to a repo (licensing.md "Exceptions").
+[reviewed]
+jinja2 = "BSD-3-Clause"  # 3.1.6: only the "BSD License" classifier; LICENSE.txt
+nvidia-ml-py = "BSD-3-Clause"  # 13.615.71: License "BSD"; the header of pynvml.py, as the wheel has no license file
+protobuf = "BSD-3-Clause"  # 6.33.6: License "3-Clause BSD License"; LICENSE
+pyasn1-modules = "BSD-2-Clause"  # 0.4.2: License "BSD"; LICENSE.txt has two clauses, not three
+uritemplate = "BSD-3-Clause OR Apache-2.0"  # 4.2.0: License "BSD 3-Clause OR Apache-2.0"; LICENSE.BSD and LICENSE.APACHE in its repo, at that tag

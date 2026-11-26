@@ -74,7 +74,9 @@ type KeyPath = tuple[str, ...]
 # The pyproject.toml keys and tables an earlier release set and this one
 # doesn't, so a repo that took that release still has them: such as a tool's
 # table, once jetstream stops running the tool. None may be a key any pack sets.
-REMOVED_KEYS: Final[tuple[KeyPath, ...]] = ()
+REMOVED_KEYS: Final[tuple[KeyPath, ...]] = (
+    ("tool", "licensecheck"),  # the python pack ran licensecheck until python_licenses replaced it
+)
 
 
 class SyncError(Exception):

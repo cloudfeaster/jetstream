@@ -47,9 +47,9 @@ repos:
         pass_filenames: false
         always_run: true  # as trivy: a new advisory fails without a change
 
-      - id: licensecheck
-        name: licensecheck (Python dependency licenses)
-        entry: run-licensecheck.sh
+      - id: python-licenses
+        name: Python licenses (product dependencies)
+        entry: run-python-licenses.sh
         language: system
         pass_filenames: false
         files: '^(uv\.lock|pyproject\.toml)$'

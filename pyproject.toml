@@ -32,7 +32,6 @@ python = [
     "bandit==1.9.4",
     "coverage==7.17.3",  # core's run-unit-tests.sh uses it when it's installed
     "deptry==0.25.1",
-    "licensecheck==2026.0.8",
     "pip-audit==2.10.1",
     "pyscn==1.33.2",
     "ruff==0.17.5",
@@ -157,10 +156,3 @@ fail_under = 80
 show_missing = true
 skip_covered = true
 
-[tool.licensecheck]
-only_licenses = [
-    "MIT",
-    "Apache",
-    "BSD",
-]
-ignore_packages = []

@@ -539,7 +539,7 @@ def test_trivy_config_includes_dev_dependencies(repo: Path, tmp_path: Path) -> N
     assert "left-pad" in names
 
 
-# --- pip-audit and licensecheck
+# --- pip-audit and python licenses
 
 
 def lock(repo: Path, *dependencies: str) -> None:
@@ -583,33 +583,34 @@ def test_pip_audit_fails_a_malformed_exception(repo: Path, run: Run) -> None:
     assert ".pip-audit-ignore: 'PYSEC-2026-1 2026-12-01': expected exp:YYYY-MM-DD" in result.stderr
 
 
-def test_licensecheck_passes_a_project_with_no_dependencies(repo: Path, run: Run) -> None:
+# run-python-licenses.sh reads licenses from the packages installed next to
+# it, which in these tests is jetstream's own .venv, so each test depends on
+# packages jetstream installs, at the versions it installs.
+
+
+def test_python_licenses_passes_a_project_with_no_dependencies(repo: Path, run: Run) -> None:
     """A project with no product dependencies yet, such as a new repo, has no licenses to check, so it passes."""
     lock(repo)
-    result: subprocess.CompletedProcess[str] = run(repo, "run-licensecheck.sh")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-python-licenses.sh")
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-@pytest.mark.integration  # locks from PyPI, and looks up licenses
-def test_licensecheck_passes_an_allowed_license(repo: Path, run: Run) -> None:
-    """An MIT-licensed dependency passes."""
-    lock(repo, "tomlkit==0.15.2")
-    result: subprocess.CompletedProcess[str] = run(repo, "run-licensecheck.sh")
+@pytest.mark.integration  # locks from PyPI
+def test_python_licenses_passes_allowed_and_reviewed_licenses(repo: Path, run: Run) -> None:
+    """An MIT dependency passes, as does Jinja2, whose metadata only says BSD but whose license python-licenses.toml records."""
+    lock(repo, "tomlkit==0.15.2", "jinja2==3.1.6")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-python-licenses.sh")
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-@pytest.mark.integration  # locks from PyPI, and looks up licenses
-def test_licensecheck_fails_a_license_jetstream_doesnt_allow(repo: Path, run: Run) -> None:
-    """An LGPL-licensed dependency fails, unless it's one of jetstream's ignore_packages."""
-    lock(repo, "paramiko==4.0.0")
-    result: subprocess.CompletedProcess[str] = run(repo, "run-licensecheck.sh")
-    assert result.returncode != 0
-    assert "paramiko" in result.stdout
-
-    pyproject: str = (repo / "pyproject.toml").read_text().replace("ignore_packages = []", 'ignore_packages = ["paramiko"]')
-    (repo / "pyproject.toml").write_text(pyproject)
-    result = run(repo, "run-licensecheck.sh")
-    assert result.returncode == 0, result.stdout + result.stderr
+@pytest.mark.integration  # locks from PyPI
+def test_python_licenses_fails_a_license_jetstream_doesnt_allow(repo: Path, run: Run) -> None:
+    """A GPL dependency fails, naming the package and its license."""
+    lock(repo, "yamllint==1.38.0")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-python-licenses.sh")
+    assert result.returncode == 1
+    assert re.search(r"^yamllint \S+: GPL-3.0-or-later isn't allowed in a direct product dependency$", result.stdout, re.MULTILINE), result.stdout
+    assert "aren't allowed in a product dependency, or need a review" in result.stderr
 
 
 # --- prune constraints and exclude-newer-package

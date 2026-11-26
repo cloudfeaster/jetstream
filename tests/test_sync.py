@@ -221,7 +221,7 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
     config: dict[str, Any] = yaml.safe_load(want.files[".pre-commit-config.yaml"].content)
     hook_ids: list[str] = [hook["id"] for hook in config["repos"][0]["hooks"]]
     assert hook_ids[0] == "jetstream-check"  # core's hooks come first, in the same list
-    assert hook_ids[-7:] == ["ruff", "ty", "bandit", "deptry", "pyscn", "pip-audit", "licensecheck"]
+    assert hook_ids[-7:] == ["ruff", "ty", "bandit", "deptry", "pyscn", "pip-audit", "python-licenses"]
     text: str = want.files[".pre-commit-config.yaml"].content.decode()
     assert text.count("repos:") == 1  # only what follows the python part's marker is appended
     assert sync.PART_MARKER not in text
@@ -252,7 +252,7 @@ def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
         ".jetstream/docs/website/website.md",
     } <= set(want.files)
     hooks: dict[str, Any] = yaml.safe_load(want.files[".pre-commit-config.yaml"].content)
-    assert [hook["id"] for hook in hooks["repos"][0]["hooks"]][-3:] == ["licensecheck", "astro-check", "npm-licenses"]
+    assert [hook["id"] for hook in hooks["repos"][0]["hooks"]][-3:] == ["python-licenses", "astro-check", "npm-licenses"]
     assert hooks["repos"][0]["hooks"][-2]["always_run"]  # astro check checks the whole project, wherever a commit changes it
     dependabot: dict[str, Any] = yaml.safe_load(want.files[".github/dependabot.yml"].content)
     assert [update["package-ecosystem"] for update in dependabot["updates"]] == ["uv", "npm"]
