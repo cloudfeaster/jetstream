@@ -8,7 +8,7 @@ Cloudfeaster code may be open-sourced or sold, so nothing Cloudfeaster distribut
 
 Third-party software that's part of a product (linked with it, embedded in it, or distributed with it), whether a direct or a transitive dependency:
 
-- **Allowed**: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC and 0BSD.
+- **Allowed**: MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD and PSF-2.0.
 - **Allowed for a font only**: OFL-1.1. A font can be part of a product, commercial or not, with its copyright notice and license kept; it can't be sold by itself.
 - **Allowed for a transitive dependency only**: MPL-2.0. It's weak copyleft that only covers changes to that package's own files, not the code that uses it.
 - **Not allowed**: GPL, LGPL and AGPL, in any version, and any license not listed here.

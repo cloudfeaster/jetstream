@@ -31,7 +31,7 @@ from typing import Any, Final
 # The licenses licensing.md allows in a product dependency. An exception is a
 # change to jetstream, not to a repo (licensing.md "Exceptions"). OFL-1.1 is
 # for fonts, which is what it's written for: a lockfile doesn't say what's one.
-ALLOWED: Final[frozenset[str]] = frozenset({"MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "OFL-1.1"})
+ALLOWED: Final[frozenset[str]] = frozenset({"MIT", "MIT-0", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "PSF-2.0", "OFL-1.1"})
 ALLOWED_TRANSITIVE: Final[frozenset[str]] = ALLOWED | {"MPL-2.0"}
 
 WORD: Final[re.Pattern[str]] = re.compile(r"\(|\)|[^\s()]+")
