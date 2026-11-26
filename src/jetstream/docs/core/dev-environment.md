@@ -32,7 +32,7 @@ To change one of those files, change it in jetstream, then bump the repo's jetst
 | **Owned by jetstream** | `cfg4dev.sh`, `.pre-commit-config.yaml`, the tool configs (`mado.toml`, `.yamllint`, `.shellcheckrc`, `.trivy.yaml`, `.jsonlintignore`), `.vscode/`'s `settings.json`, `terminal-init.sh` and `.gitignore`, `.claude/settings.json`, `.claude/skills/jetstream-*/`, `.github/dependabot.yml`, `.github/workflows/jetstream-*.yaml`, `.jetstream/docs/` and `.jetstream/trivyignore` | jetstream; `sync` writes them, `check` enforces them |
 | **Owned by the repo** | `cfg4dev.local.sh`, `.trivyignore`, `.gitleaksignore`, `CONTRIBUTING.md`, `CLAUDE.md`, and the repo's own workflows | the repo |
 | **A jetstream block in a repo's file** | `.gitignore`, between `# >>> jetstream` and `# <<< jetstream` | jetstream inside the block, the repo outside it |
-| **Both set values** | `pyproject.toml` | jetstream sets certain keys, such as `requires-python` and `[tool.uv] exclude-newer`, and the repo owns every other key, including keys it adds to jetstream's tables |
+| **Both set values** | `pyproject.toml` | jetstream sets certain keys, such as `requires-python` and `[tool.uv] exclude-newer`, and the repo owns every other key, including keys it adds to jetstream's tables; `sync` deletes a key or table jetstream used to set and no longer does, such as a tool's table once jetstream stops running the tool |
 
 jetstream owns `.github/workflows/jetstream-*.yaml`, `.claude/skills/jetstream-*/` and `.jetstream/docs/` outright: `sync` deletes any file there that the release doesn't write. The repo's own Claude Code skills go in `.claude/skills/` under any other name.
 
