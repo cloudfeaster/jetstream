@@ -137,13 +137,14 @@ Every repo should end up `enforced`. A `failed` one isn't managed by the configu
 
 A repo that changes visibility keeps its configuration, so attach the other one to it.
 
-## 6. Turn off wikis and projects
+## 6. Turn off wikis, projects and discussions
 
 - **No repo has a wiki.** Any GitHub user can edit a public repo's wiki unless editing is restricted, so it's a place an outsider could publish under the org's name. New repos get one by default, so turn it off on each.
 - **Projects are off**, org and repo, if nothing uses them: less to secure.
+- **No repo has discussions**, if nothing uses them: like a wiki, they'd let any GitHub user post on a public repo's pages. New repos start with them off, but no org setting stops a repo admin turning them on, so turn them off on each repo too.
 
 ```bash
-gh api -X PATCH repos/<org>/<repo> -F has_wiki=false -F has_projects=false
+gh api -X PATCH repos/<org>/<repo> -F has_wiki=false -F has_projects=false -F has_discussions=false
 gh api -X PATCH orgs/<org> -F has_organization_projects=false -F has_repository_projects=false
 ```
 
