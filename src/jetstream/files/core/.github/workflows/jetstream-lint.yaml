@@ -4,7 +4,9 @@
 # One job, "jetstream lint", so the org ruleset can require one stable
 # status check. It runs what a developer's git hooks run (decision 10):
 # uv sync installs jetstream's tools, then jetstream check and every
-# pre-commit hook. Then the tests marked integration, which no hook runs.
+# pre-commit hook. Then the tests marked integration, which no hook runs,
+# and each pack's build and its checks, so a pull request that breaks
+# them can't merge: the ruleset requires this check, and no other.
 name: jetstream lint
 
 on:  # yamllint disable-line rule:truthy
@@ -71,3 +73,28 @@ jobs:
       - name: integration tests
         if: ${{ !cancelled() }}
         run: uv run --no-sync run-integration-tests.sh
+
+      # A file only the pack writes says it's there. Each step runs after a
+      # failure before it, as the integration tests do, so one run shows
+      # every failure; the site's checks need the site it built.
+      - name: Build the site (website pack)
+        id: site
+        if: ${{ !cancelled() && hashFiles('.nvmrc') != '' && hashFiles('package-lock.json') != '' }}
+        run: node_modules/.bin/astro build
+
+      - name: Check the site's links (website pack)
+        if: ${{ !cancelled() && steps.site.outcome == 'success' }}
+        run: uv run --no-sync run-lychee.sh
+
+      - name: Check what the site publishes (website pack)
+        if: ${{ !cancelled() && steps.site.outcome == 'success' }}
+        run: uv run --no-sync run-check-dist.sh
+
+      # Nothing is kept: in jetstream itself the wheel holds the tools'
+      # binaries, and a jetstream wheel is never kept anywhere but the
+      # machine that built it (see above), and publishing any wheel needs a
+      # licensing review first (licensing.md). Out of dist/, which is a
+      # site's.
+      - name: Build the sdist and wheel (python pack)
+        if: ${{ !cancelled() && hashFiles('.jetstream/pip-audit-ignore') != '' }}
+        run: uv build --out-dir "${RUNNER_TEMP}/uv-build"

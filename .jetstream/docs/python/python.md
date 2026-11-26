@@ -16,7 +16,7 @@ The python pack is for a repo whose own code is Python. It adds these hooks to c
 
 The pack also installs coverage, and core's `unit-tests` hook then runs the tests under it: the hook fails if coverage is below 80% (branch coverage, of every `*.py` file except those in a `tests/` folder, so a file no test imports counts as 0%). `.coverage` is left behind, so `coverage html` shows what's missed.
 
-The pack's `jetstream-python-ci.yaml` workflow builds the sdist and wheel (`uv build`) on every pull request and push to `main`, to prove they still build. It keeps nothing: publishing a wheel needs a licensing review first ([licensing.md](../core/licensing.md)).
+`jetstream lint` also builds the sdist and wheel (`uv build`) on every pull request and push to `main`, to prove they still build, so a pull request that breaks the build can't merge. It keeps nothing: publishing a wheel needs a licensing review first ([licensing.md](../core/licensing.md)).
 
 None of the hooks changes a file. To fix what ruff reports:
 

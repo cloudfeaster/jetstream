@@ -16,7 +16,8 @@ The `npm-licenses` hook checks the licenses of what `dependencies` bring in, rea
 | File | What it does |
 |---|---|
 | `.nvmrc` | the Node version, for local setup and every workflow |
-| `.github/workflows/jetstream-website-ci.yaml` | builds the site (`astro build`) on every pull request and push to `main`, then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline), and that it has nothing a site shouldn't publish (`run-check-dist.sh`; see [What a site publishes](#what-a-site-publishes)); on `main`, once they pass, deploys it to GitHub Pages, if the repo has turned that on (see [Deploying](#deploying)) |
+| steps in `jetstream lint` | on every pull request and push to `main`, builds the site (`astro build`), then checks the links between its pages and files, `#fragments` included (`run-lychee.sh`, offline), and that it has nothing a site shouldn't publish (`run-check-dist.sh`; see [What a site publishes](#what-a-site-publishes)); they're in `jetstream lint` because it's the one check a pull request must pass |
+| `.github/workflows/jetstream-website-ci.yaml` | on every push to `main`, builds the site and runs the same checks, then, once they pass, deploys it to GitHub Pages, if the repo has turned that on (see [Deploying](#deploying)) |
 | `.github/workflows/jetstream-website-links.yaml` | every night, builds the site and checks every link, links to other sites included (`run-lychee.sh --external`), so a link that stops working fails without anyone pushing |
 | `.github/workflows/jetstream-website-lighthouse.yaml` | every night, builds the site and checks the Lighthouse budgets (`run-lighthouse.sh`; see [Lighthouse](#lighthouse)) |
 | the `astro-check` hook | the site's Astro components, TypeScript and content collections, at every commit, since it checks the whole project (`run-astro-check.sh`; see [Checking types](#checking-types)) |
@@ -66,7 +67,7 @@ The repo itself, its `.env` and the rest, isn't: only what the build writes. `ru
 - a hidden file or folder, such as `.env` or `.DS_Store`, except `.well-known/` at the top, which is meant to be published;
 - metadata in an image, such as its camera, GPS location, author or the software that made it: text, EXIF and time chunks in a PNG, and EXIF or XMP in a JPEG or WebP. Astro strips it from the images it processes, but copies `public/` as it is. Strip it before committing the image, for example with `exiftool -all= <image>`.
 
-Website CI runs it on every pull request, and before every deploy. To run it yourself, after `astro build`:
+`jetstream lint` runs it on every pull request, and website CI before every deploy. To run it yourself, after `astro build`:
 
 ```bash
 run-check-dist.sh
