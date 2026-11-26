@@ -6,7 +6,7 @@
 # GitHub emails a failed run to whoever last changed the schedule below.
 name: jetstream prune exclude-newer-package
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:

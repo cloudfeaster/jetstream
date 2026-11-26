@@ -8,7 +8,7 @@
 # deletes any jetstream-* workflow the release doesn't ship.
 name: binary pins
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:

@@ -10,7 +10,7 @@
 # .jetstream/docs/core/jetstream-update.md says how to set it up.
 name: jetstream update
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:

@@ -7,3 +7,7 @@ rules:
   # 80 characters is the aim, but a longer line isn't worth failing on.
   line-length:
     max: 256
+  # a workflow's `on:` key is a key, not the boolean yamllint would read it
+  # as; values such as `yes` are still flagged
+  truthy:
+    check-keys: false

@@ -9,7 +9,6 @@ line-length = 256
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "S101",    # assert: tests use it
     "B011",    # assert False
     "PT015",   # an assertion that always fails
     "SLF001",  # private member access
@@ -19,6 +18,10 @@ ignore = [
     "TID252",  # relative imports keep a package self-contained
     "CPY001",  # copyright is stated once, in LICENSE (licensing.md)
 ]
+
+# assert is for tests: `python -O` strips it from product code
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
 
 [tool.ruff.lint.pylint]
 max-statements = 100
@@ -38,7 +41,7 @@ docstring-code-line-length = 72
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = [
-    "B101",  # assert: as ruff's S101
+    "B101",  # assert: ruff's S101 checks it, outside tests
 ]
 
 # coverage (core's run-unit-tests.sh runs the tests under coverage when the

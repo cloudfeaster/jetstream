@@ -7,7 +7,7 @@
 # even when an earlier one fails, so one finding can't hide another.
 name: jetstream nightly SCA
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "0 5 * * *"
   workflow_dispatch:

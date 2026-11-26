@@ -7,7 +7,7 @@
 # the schedule below.
 name: jetstream prune pip-audit-ignore
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "30 6 * * *"
   workflow_dispatch:
