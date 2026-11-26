@@ -9,7 +9,7 @@
 # them can't merge: the ruleset requires this check, and no other.
 name: jetstream lint
 
-on:  # yamllint disable-line rule:truthy
+on:
   push:
     branches: [main]
   pull_request:

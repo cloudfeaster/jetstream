@@ -8,7 +8,7 @@
 # read; .jetstream/docs/core/dependabot-alerts.md says how to set it up.
 name: jetstream sync dependabot alerts
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "30 7 * * *"
   push:

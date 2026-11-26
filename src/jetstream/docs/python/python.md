@@ -25,7 +25,7 @@ ruff format
 
 ## ruff's configuration
 
-jetstream sets ruff's keys in `pyproject.toml`: `line-length` (256: break lines where it reads well), `select = ["ALL"]`, the `ignore` list, the pylint and mccabe limits, and the format options. The repo can:
+jetstream sets ruff's keys in `pyproject.toml`: `line-length` (256: break lines where it reads well), `select = ["ALL"]`, the `ignore` list, `per-file-ignores` (which allows `assert` only in a `tests/` folder, since `python -O` strips it from product code), the pylint and mccabe limits, and the format options. The repo can:
 
 - leave its own files out with `[tool.ruff] exclude`;
 - add rules with ruff's `extend-*` keys, such as `[tool.ruff.lint] extend-per-file-ignores`.

@@ -4,7 +4,7 @@
 # jetstream is distributed" says why that matters for licensing.
 name: release assets
 
-on:  # yamllint disable-line rule:truthy
+on:
   release:
     types: [published, edited]
   schedule:

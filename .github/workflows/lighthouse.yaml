@@ -7,7 +7,7 @@
 # ship.
 name: Lighthouse
 
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "30 8 * * *"
   pull_request:
