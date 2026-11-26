@@ -1197,6 +1197,39 @@ def test_lychee_checks_the_sites_own_links_when_its_host_is_an_ipv6_address(repo
     assert "1 Error" in result.stdout
 
 
+@pytest.mark.parametrize(
+    ("config", "links"),
+    [
+        ({}, ["../", "../about/", "../../about/#team"]),
+        ({"site": SITE, "base": "/docs"}, ["./about/", "../docs/about/", "../../docs/about/#team"]),
+    ],
+    ids=["no-base", "base"],
+)
+def test_lychee_resolves_a_relative_link_against_the_pages_deployed_url(repo: Path, run: Run, config: dict[str, str], links: list[str]) -> None:
+    """A relative link that goes up past the site's root stops there, as a browser resolves it, rather than leaving dist/."""
+    build_site(repo, config, links)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    ("config", "link"),
+    [
+        ({}, "../package.json"),
+        ({}, "../dist/about/"),
+        ({"site": SITE, "base": "/docs"}, "../about/"),
+    ],
+    ids=["file-beside-dist", "dist-itself", "outside-the-base"],
+)
+def test_lychee_fails_a_relative_link_that_is_missing_from_the_deployed_site(repo: Path, run: Run, config: dict[str, str], link: str) -> None:
+    """A relative link to a file outside dist/, which isn't deployed, fails even if the file is in the repo."""
+    build_site(repo, config, [link])
+    (repo / "package.json").write_text("{}\n")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-lychee.sh")
+    assert result.returncode == LYCHEE_BROKEN_LINKS
+    assert "1 Error" in result.stdout
+
+
 def test_lychee_reads_a_typescript_config(repo: Path, run: Run) -> None:
     """An astro.config.ts is read by stripping its types."""
     build_site(repo, {}, ["/docs/about/"])
