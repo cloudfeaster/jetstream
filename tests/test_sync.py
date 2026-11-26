@@ -337,6 +337,46 @@ def test_check_names_a_missing_key(synced: Path) -> None:
     assert sync.check(synced) == ['pyproject.toml: [tool.uv] required-version is missing; jetstream sets ">=0.13.5"']
 
 
+def test_sync_deletes_a_table_jetstream_no_longer_sets(synced: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A removed table is named by check, and sync deletes all of it, the repo's own keys in it included, and nothing else."""
+    monkeypatch.setattr(sync, "REMOVED_KEYS", (("tool", "old"),))
+    pyproject: Path = synced / "pyproject.toml"
+    before: str = pyproject.read_text()
+    pyproject.write_text(before + '\n[tool.old]\nonly = ["MIT"]\nrepos-own = 1\n')
+    assert sync.check(synced) == ["pyproject.toml: [tool.old] isn't set by this jetstream release"]
+
+    assert sync.sync(synced) == ["pyproject.toml"]
+    assert pyproject.read_text().rstrip("\n") == before.rstrip("\n")
+    assert sync.check(synced) == []
+
+
+def test_sync_deletes_a_key_jetstream_no_longer_sets(synced: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A removed key in one of jetstream's tables is named by check, and sync deletes only that key."""
+    monkeypatch.setattr(sync, "REMOVED_KEYS", (("tool", "uv", "old-key"),))
+    pyproject: Path = synced / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text().replace("[tool.uv]\n", "[tool.uv]\nold-key = true\n"))
+    assert sync.check(synced) == ["pyproject.toml: [tool.uv] old-key isn't set by this jetstream release"]
+
+    assert sync.sync(synced) == ["pyproject.toml"]
+    assert pyproject_of(synced)["tool"]["uv"] == {"required-version": ">=0.13.5", "exclude-newer": "7 days"}
+    assert sync.check(synced) == []
+
+
+def test_a_removed_key_the_repo_doesnt_have_is_not_a_difference(synced: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A repo that never had a removed key passes check, and sync leaves its pyproject.toml alone."""
+    monkeypatch.setattr(sync, "REMOVED_KEYS", (("tool", "old"), ("tool", "uv", "old-key")))
+    assert sync.check(synced) == []
+    assert sync.sync(synced) == []
+
+
+@pytest.mark.parametrize("removed", sync.REMOVED_KEYS)
+def test_no_pack_sets_a_removed_key(removed: sync.KeyPath) -> None:
+    """A removed key isn't one any pack sets, nor a table holding one or a key inside one, or sync would write it and delete it."""
+    keys: dict[sync.KeyPath, Any] = sync.expected((*sync.PACKS, sync.ACTIONS_PACK, sync.SELF_PACK)).pyproject_keys
+    clashes: list[sync.KeyPath] = [key for key in keys if key[: len(removed)] == removed or removed[: len(key)] == key]
+    assert clashes == []
+
+
 def test_check_names_changed_missing_and_non_executable_files(synced: Path) -> None:
     """Each kind of difference in an owned file is named, and syncing fixes each."""
     (synced / "mado.toml").write_text("changed\n")

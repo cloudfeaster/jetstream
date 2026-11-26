@@ -10,7 +10,9 @@ everything jetstream owns in that repo (decision 6):
 - **the .gitignore block** between ``# >>> jetstream`` and ``# <<< jetstream``,
   from each pack's ``parts/<pack>/gitignore``;
 - **jetstream's pyproject.toml keys** (decision 7), from each pack's
-  ``parts/<pack>/pyproject.toml``. Every other key belongs to the repo.
+  ``parts/<pack>/pyproject.toml``. Every other key belongs to the repo, except
+  those in ``REMOVED_KEYS``, which an earlier release set: ``sync()`` deletes
+  them, and ``check()`` fails while one remains.
 
 ``sync()`` writes them, and ``check()`` lists how the repo differs from them.
 Neither touches anything else, such as the jetstream pin, except that jetstream
@@ -68,6 +70,11 @@ PART_MARKER: Final[str] = "# >>> jetstream: appended"
 PACKAGE: Final[Traversable] = files("jetstream")
 
 type KeyPath = tuple[str, ...]
+
+# The pyproject.toml keys and tables an earlier release set and this one
+# doesn't, so a repo that took that release still has them: such as a tool's
+# table, once jetstream stops running the tool. None may be a key any pack sets.
+REMOVED_KEYS: Final[tuple[KeyPath, ...]] = ()
 
 
 class SyncError(Exception):
@@ -306,6 +313,16 @@ def format_key(path: KeyPath) -> str:
     return f"[{'.'.join(path[:-1])}] {path[-1]}" if len(path) > 1 else path[0]
 
 
+def removed_keys(document: tomlkit.TOMLDocument) -> list[KeyPath]:
+    """Return the paths in REMOVED_KEYS that ``document`` still has."""
+    return [path for path in REMOVED_KEYS if get_key(document, path)[0]]
+
+
+def format_removed(document: tomlkit.TOMLDocument, path: KeyPath) -> str:
+    """Return removed ``path`` as it reads in ``document``: ``[tool.licensecheck]`` for a table, as format_key for a key."""
+    return f"[{'.'.join(path)}]" if isinstance(get_key(document, path)[1], dict) else format_key(path)
+
+
 # --- sync and check
 
 
@@ -366,6 +383,7 @@ def differences(root: Path, want: Expected) -> list[str]:
             found.append(
                 f"pyproject.toml: {format_key(key_path)} is {tomlkit.item(actual).as_string()}; jetstream sets {tomlkit.item(value).as_string()}",
             )
+    found.extend(f"pyproject.toml: {format_removed(document, path)} isn't set by this jetstream release" for path in removed_keys(document))
     return found
 
 
@@ -404,6 +422,11 @@ def sync(root: Path) -> list[str]:
     pyproject: Path = root / "pyproject.toml"
     original: str = pyproject.read_text()
     document: tomlkit.TOMLDocument = tomlkit.parse(original)
+    for path in removed_keys(document):
+        parent: Any = document
+        for key in path[:-1]:
+            parent = parent[key]
+        del parent[path[-1]]
     for key_path, value in want.pyproject_keys.items():
         present: bool
         actual: Any
