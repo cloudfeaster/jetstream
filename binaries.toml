@@ -32,7 +32,7 @@ linux_aarch64 = { platform = "Linux-gnu-arm64", sha256 = "a9009893bdf59a81561f69
 macosx_11_0_arm64 = { platform = "macOS-arm64", sha256 = "8a646da7c4381580710594f3de54e65bc1b13e0610a6504d598e1f66f6ec9dff" }
 
 [d2]
-repo = "terrastruct/d2"
+repo = "d2lang/d2"
 license = "MPL-2.0"
 version = "0.9.0"
 tag = "v{version}"
