@@ -1288,6 +1288,62 @@ def test_lychee_rejects_unknown_arguments(repo: Path, run: Run) -> None:
     assert "usage: run-lychee.sh [--external]" in result.stderr
 
 
+# --- what a site publishes (website pack)
+
+
+def test_check_dist_passes_a_clean_site(repo: Path, run: Run) -> None:
+    """A built site with nothing it shouldn't publish passes; dist/ is usually gitignored, and is checked anyway."""
+    build_site(repo, {}, ["/about/"])
+    (repo / ".gitignore").write_text("dist/\n")
+    result: subprocess.CompletedProcess[str] = run(repo, "run-check-dist.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    ("name", "content", "found", "message"),
+    [
+        ("config.js", 'const token = "ghp_' + "Z3x9Qm2LkP7vR4tY8wN1bC6dF0hJ5sA2eG7u" + '";\n', "leaks found", "a secret in dist/"),
+        ("_astro/a.js.map", "{}\n", "dist/_astro/a.js.map: a source map", "what a site shouldn't publish"),
+        (".env", "KEY=1\n", "dist/.env: a hidden file", "what a site shouldn't publish"),
+    ],
+    ids=["secret", "source-map", "hidden-file"],
+)
+def test_check_dist_fails_what_a_site_shouldnt_publish(repo: Path, run: Run, name: str, content: str, found: str, message: str) -> None:
+    """A secret, a source map or a hidden file in dist/ fails, naming it and saying what to do."""
+    build_site(repo, {}, [])
+    (repo / "dist" / name).parent.mkdir(parents=True, exist_ok=True)
+    (repo / "dist" / name).write_text(content)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-check-dist.sh")
+    assert result.returncode == 1
+    assert found in result.stdout + result.stderr
+    assert message in result.stderr
+
+
+def test_check_dist_fails_an_image_with_metadata(repo: Path, run: Run) -> None:
+    """A PNG with a text chunk, as an editor leaves its name or the author's, fails."""
+    build_site(repo, {}, [])
+    signature: bytes = b"\x89PNG\r\n\x1a\n"
+    text: bytes = b"tEXt" + b"Author\x00someone"
+    (repo / "dist" / "logo.png").write_bytes(signature + len(text[4:]).to_bytes(4) + text + b"\x00" * 4)
+    result: subprocess.CompletedProcess[str] = run(repo, "run-check-dist.sh")
+    assert result.returncode == 1
+    assert "dist/logo.png: metadata in the image (tEXt)" in result.stdout
+
+
+def test_check_dist_needs_a_built_site(repo: Path, run: Run) -> None:
+    """Without dist/, the script says to build the site first."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-check-dist.sh")
+    assert result.returncode == 1
+    assert "no dist/: build the site first" in result.stderr
+
+
+def test_check_dist_rejects_arguments(repo: Path, run: Run) -> None:
+    """The script takes no arguments."""
+    result: subprocess.CompletedProcess[str] = run(repo, "run-check-dist.sh", "dist")
+    assert result.returncode == 1
+    assert "usage: run-check-dist.sh" in result.stderr
+
+
 # --- unit-tests
 
 
