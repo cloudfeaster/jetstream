@@ -27,7 +27,7 @@ A repo selects packs in `[tool.jetstream] packs`:
 | Pack | For |
 |---|---|
 | `core` | every repo: YAML, JSON, Markdown, shell, GitHub Actions, secrets, CI |
-| `python` | Python packages: ruff, ty, bandit, licensecheck, pip-audit and more |
+| `python` | Python packages: ruff, ty, bandit, pip-audit, a product license check and more |
 | `website` | Astro and Starlight sites on GitHub Pages |
 
 ## Supported platforms

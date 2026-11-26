@@ -76,7 +76,7 @@ To change it, edit `required-version` in core's part, run `jetstream sync` (jets
 
 ## Licenses of the tools jetstream installs
 
-Every tool jetstream installs is a development tool, so it may have any open-source license except that an AGPL one needs a review first ([licensing.md](src/jetstream/docs/core/licensing.md#development-tools)). `tests/test_dev_tool_licenses.py` checks these against a list of the open-source SPDX license IDs (`OPEN_SOURCE`), not with licensecheck, which reads `FSL-1.1-Apache-2.0` as Apache:
+Every tool jetstream installs is a development tool, so it may have any open-source license except that an AGPL one needs a review first ([licensing.md](src/jetstream/docs/core/licensing.md#development-tools)). `tests/test_dev_tool_licenses.py` checks these against a list of the open-source SPDX license IDs (`OPEN_SOURCE`), by ID, so a source-available license such as `FSL-1.1-Apache-2.0` doesn't pass for Apache:
 
 - **every Python package** that a pack's extra installs, with its dependencies, using its installed metadata: its SPDX license expression, or, if it has none, its license classifiers (`OPEN_SOURCE_CLASSIFIERS`);
 - **every Node package** in `src/jetstream/node/*/package-lock.json`;

@@ -58,6 +58,6 @@ After any change to `uv.lock`, run both scanners and the license check, since a 
 ```bash
 run-trivy.sh
 run-pip-audit.sh
-run-licensecheck.sh
+run-python-licenses.sh
 pre-commit run --all-files
 ```

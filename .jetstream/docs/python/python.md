@@ -12,7 +12,7 @@ The python pack is for a repo whose own code is Python. It adds these hooks to c
 | `deptry` | the dependencies in `pyproject.toml` against what the code imports: every import is declared, every dependency is used, and no dev dependency is imported; deptry's defaults leave out a top-level `tests/` (see [Tests](#tests) for tests beside the code) |
 | `pyscn` | a health score for complexity, dead code, clones, coupling and cohesion, which must be at least 90; `pyscn analyze --html .` shows the details |
 | `pip-audit` | no known vulnerabilities in any package in `uv.lock`, jetstream's tools included, like `trivy` but with PyPI's advisories; it runs at every commit, and every night in `jetstream-nightly-sca.yaml` |
-| `licensecheck` | the licenses of the product dependencies (`[project] dependencies`, and theirs) are ones [licensing.md](../core/licensing.md) allows, with jetstream's `[tool.licensecheck]` keys; dev dependencies, jetstream among them, are left out |
+| `python-licenses` | the licenses of the product dependencies (`[project] dependencies`, and theirs) are ones [licensing.md](../core/licensing.md) allows, by SPDX ID (see [Product licenses](#product-licenses)); dev dependencies, jetstream among them, are left out |
 
 The pack also installs coverage, and core's `unit-tests` hook then runs the tests under it: the hook fails if coverage is below 80% (branch coverage, of every `*.py` file except those in a `tests/` folder, so a file no test imports counts as 0%). `.coverage` is left behind, so `coverage html` shows what's missed.
 
@@ -59,9 +59,11 @@ Two `[tool.uv]` lists in `pyproject.toml` hold entries that are only needed for 
 
 They lock a copy of `pyproject.toml` and `uv.lock`, never the repo's own. To run one yourself, run `run-prune-constraints.sh` or `run-prune-exclude-newer-package.sh`.
 
-## licensecheck's policy
+## Product licenses
 
-jetstream sets `[tool.licensecheck]`: `only_licenses` (MIT, Apache and BSD) and `ignore_packages`, the exceptions. licensecheck can't tell a transitive dependency from a direct one, so an MPL-2.0 transitive dependency, which licensing.md allows, is added to `ignore_packages` by name. Like every license exception, that's a change to jetstream, not to the repo.
+The `python-licenses` hook (`run-python-licenses.sh`) reads each product dependency's license from the package installed in `.venv`, as SPDX IDs: its `License-Expression`, or failing that its `License` if that's made of licenses licensing.md allows, or failing that its license classifiers if each names one license (`MIT License`, but not `BSD License`, which doesn't say which BSD). It compares IDs, not words, so `FSL-1.1-MIT` and `BSD-4-Clause` fail, and it knows a direct dependency from a transitive one, so MPL-2.0 passes only as a transitive one.
+
+A package whose metadata doesn't say clearly fails until someone reads its license file and records the license in jetstream's `python-licenses.toml`, with the version reviewed. Like every license exception, that's a change to jetstream, not to the repo. A recorded package fails again if a later version says clearly that it has another license.
 
 ## deptry's configuration
 

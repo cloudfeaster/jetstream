@@ -2,11 +2,10 @@
 
 That's any open-source license, GPL, LGPL and AGPL included, except that an
 AGPL tool needs a review first. Licenses are compared by SPDX ID with the list
-below, so one that isn't on it, or a missing one, fails until it's reviewed.
-licensecheck isn't used, because it matches words: it reads FSL-1.1-Apache-2.0
-(source-available, not open source) as Apache. The product rule, which the
-python pack's licensecheck hook applies to a repo's own dependencies, is a
-different one.
+below, so one that isn't on it, or a missing one, fails until it's reviewed,
+and a source-available license such as FSL-1.1-Apache-2.0 doesn't pass for
+Apache. The product rule, which the python pack's python-licenses hook applies
+to a repo's own dependencies, is a different one.
 """
 
 import importlib.metadata
