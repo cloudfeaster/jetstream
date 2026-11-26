@@ -227,7 +227,6 @@ def test_python_pack_adds_its_hooks_docs_and_keys() -> None:
     assert sync.PART_MARKER not in text
     assert ".jetstream/docs/python/python.md" in want.files
     assert ".jetstream/pip-audit-ignore" in want.files
-    assert ".github/workflows/jetstream-python-ci.yaml" in want.files
     assert ".github/workflows/jetstream-prune-constraints.yaml" in want.files
     assert ".github/workflows/jetstream-prune-exclude-newer-package.yaml" in want.files
     assert ".github/workflows/jetstream-prune-pip-audit-ignore.yaml" in want.files
@@ -261,6 +260,28 @@ def test_website_pack_adds_node_astro_check_and_npm_updates() -> None:
     ci: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-website-ci.yaml"].content)
     assert ci["jobs"]["deploy"]["if"] == "needs.build.outputs.deploy == 'true'"  # only once the repo's Pages source is GitHub Actions
     assert ci["jobs"]["deploy"]["permissions"] == {"pages": "write", "id-token": "write"}
+
+
+@pytest.mark.parametrize(
+    ("pack", "marker", "steps"),
+    [
+        ("python", ".jetstream/pip-audit-ignore", ["Build the sdist and wheel (python pack)"]),
+        ("website", ".nvmrc", ["Build the site (website pack)", "Check the site's links (website pack)", "Check what the site publishes (website pack)"]),
+    ],
+)
+def test_jetstream_lint_builds_each_pack(pack: str, marker: str, steps: list[str]) -> None:
+    """The one required check, jetstream lint, runs each pack's build and its checks, keyed off a file only that pack writes; no other workflow runs on a pull request to build."""
+    want: sync.Expected = sync.expected(("core", pack))
+    assert marker in want.files
+    assert marker not in sync.expected(("core",)).files
+    lint: dict[str, Any] = yaml.safe_load(want.files[".github/workflows/jetstream-lint.yaml"].content)
+    by_name: dict[str, dict[str, Any]] = {step["name"]: step for step in lint["jobs"]["lint"]["steps"]}
+    assert f"hashFiles('{marker}')" in by_name[steps[0]]["if"]
+    assert all("!cancelled()" in by_name[name]["if"] for name in steps)  # a hook's failure doesn't hide the build's
+    for path, file in want.files.items():
+        if path.startswith(".github/workflows/") and path != ".github/workflows/jetstream-lint.yaml":
+            workflow: dict[Any, Any] = yaml.safe_load(file.content)
+            assert "pull_request" not in workflow[True], path  # yaml reads on: as True
 
 
 # --- sync, then check

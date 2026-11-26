@@ -104,7 +104,7 @@ def test_a_failed_download_leaves_the_old_release_working(release: Release, tmp_
 
 @pytest.mark.parametrize("packs", MATRIX, ids=["+".join(("core", *packs)) for packs in MATRIX])
 def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: tuple[str, ...]) -> None:
-    """A new repo installs jetstream and its tools, and passes ``jetstream check`` and every hook; a site also passes website CI's checks."""
+    """A new repo installs jetstream and its tools, and passes ``jetstream check``, every hook, and the builds and checks jetstream lint runs for its packs."""
     repo: Path = tmp_path / "my-repo"
     repo.mkdir()
     run(repo, release.env, "git", "init", "--quiet", "--initial-branch", "main")
@@ -130,6 +130,8 @@ def test_a_new_repo_passes_its_checks(release: Release, tmp_path: Path, packs: t
         assert wrong.returncode == 1
         assert "wrong.astro" in wrong.stdout  # jetstream's TypeScript checks the site's pages
         page.unlink()
+    if "python" in packs:  # as jetstream lint does
+        run(repo, release.env, "uv", "build", "--out-dir", str(tmp_path / "uv-build"))
     if LIGHTHOUSE and packs == ("website",):  # once, as it's slow and the site is the same
         run(repo, release.env, "uv", "run", "--no-sync", "run-lighthouse.sh")
     if "website" in packs:  # the site's Vite reads a config that Node can't: an import with no extension, and an enum

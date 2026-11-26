@@ -61,7 +61,7 @@ pre-commit run --all-files
 
 A repo can't add hooks. It adds a check by adding a test, which the `unit-tests` hook runs.
 
-A slow test, such as one that needs the network, is marked `@pytest.mark.integration`. No hook runs those: the `jetstream-lint.yaml` workflow runs them after the hooks, with `run-integration-tests.sh`, which you can also run yourself.
+A slow test, such as one that needs the network, is marked `@pytest.mark.integration`. No hook runs those: the `jetstream-lint.yaml` workflow runs them after the hooks, with `run-integration-tests.sh`, which you can also run yourself. Then it builds what each pack builds, and checks the result, such as the python pack's wheel and the website pack's site (see each pack's docs), since `jetstream lint` is the one check a pull request must pass.
 
 ## Vulnerabilities
 
