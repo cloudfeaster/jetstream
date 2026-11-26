@@ -133,7 +133,14 @@ gh api "orgs/<org>/code-security/configurations/$ID/repositories" --paginate --j
 
 Every repo should end up `enforced`. A `failed` one isn't managed by the configuration: find out which of its settings conflicts, fix that, and attach the configuration again. One cause is CodeQL's advanced setup, which conflicts with the default setup `<org> public` turns on. Either switch the repo to default setup, which disables its own CodeQL workflow and blocks CodeQL analysis uploads, so first check that default setup covers what that workflow does, or give the repo a configuration of its own with `code_scanning_default_setup` as `not_set`.
 
-A repo that changes visibility keeps its configuration, so attach the other one to it.
+To attach a configuration to one repo, give the repo's ID, with `$ID` set to the configuration's as above. Don't attach it again with `scope=public` or `scope=private_or_internal`: that re-attaches every repo of that visibility, replacing the configuration of any repo that has its own.
+
+```bash
+REPO_ID=$(gh api repos/<org>/<repo> --jq .id)
+gh api -X POST "orgs/<org>/code-security/configurations/$ID/attach" -f scope=selected -F "selected_repository_ids[]=$REPO_ID"
+```
+
+A repo that changes visibility keeps its configuration, so attach the other one to it, the same way.
 
 ## 6. Turn off wikis, projects and discussions
 
