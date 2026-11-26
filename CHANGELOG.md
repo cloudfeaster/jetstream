@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.17.0](https://github.com/cloudfeaster/jetstream/compare/v0.16.0...v0.17.0) (2026-11-26)
+
+
+### Features
+
+* allow MIT-0 and PSF-2.0 in product dependencies ([#145](https://github.com/cloudfeaster/jetstream/issues/145)) ([9f5cdff](https://github.com/cloudfeaster/jetstream/commit/9f5cdffc213b2baebfd8c8e6431c61348ca0cd4d))
+* check Python dependency licenses by SPDX ID, replacing licensecheck ([#147](https://github.com/cloudfeaster/jetstream/issues/147)) ([a0e4127](https://github.com/cloudfeaster/jetstream/commit/a0e4127f2555436bb3fb6c25b1b22c70974e9215))
+* check what a website build publishes before deploying it ([#138](https://github.com/cloudfeaster/jetstream/issues/138)) ([456950a](https://github.com/cloudfeaster/jetstream/commit/456950a7dc3a98ba842823ab06dbed50f52765b2))
+* sync removes pyproject keys jetstream no longer sets ([#146](https://github.com/cloudfeaster/jetstream/issues/146)) ([54bbcce](https://github.com/cloudfeaster/jetstream/commit/54bbcce26c67c59caf64dc6b8b2441a9117e183c))
+
+
+### Bug Fixes
+
+* build each pack in jetstream lint, the one required check ([#141](https://github.com/cloudfeaster/jetstream/issues/141)) ([cd505ed](https://github.com/cloudfeaster/jetstream/commit/cd505ed5406e71322b1b907fa2b559d9479e7200))
+* read trivy's latest release from github.com when its org refuses the API ([#139](https://github.com/cloudfeaster/jetstream/issues/139)) ([9148145](https://github.com/cloudfeaster/jetstream/commit/9148145a40ecd8e3e00b3c2239d344400a92b74f))
+
+
+### Documentation
+
+* turn off discussions in org setup, with wikis and projects ([#148](https://github.com/cloudfeaster/jetstream/issues/148)) ([e8a9a7d](https://github.com/cloudfeaster/jetstream/commit/e8a9a7d208e9f87d0631b49677840fe5f649bedd))
+
 ## [0.16.0](https://github.com/cloudfeaster/jetstream/compare/v0.15.0...v0.16.0) (2026-11-25)
 
 
