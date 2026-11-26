@@ -12,7 +12,14 @@ SHA-256s come from the digests GitHub records for each release asset, and
 must match the checksums file the project publishes in the same release
 (the pin's `checksums`), so a bump never rests on one source.
 
-Set GITHUB_TOKEN to avoid the GitHub API's 60 requests/hour limit.
+Set GITHUB_TOKEN to avoid the GitHub API's 60 requests/hour limit. An org
+with an IP allow list (aquasecurity, for trivy) refuses any token from an IP
+that isn't on its list, such as a GitHub runner's, even for a public repo
+(https://github.com/aquasecurity/trivy/issues/10567). For such a tool,
+--check reads the latest release from github.com's pages instead of the API,
+and leaves its license to be checked when it's bumped, since a pinned
+version's license can't change; a bump needs the API, so run it without
+GITHUB_TOKEN there.
 """
 
 from __future__ import annotations
@@ -21,8 +28,10 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from http import HTTPStatus
 from pathlib import Path
@@ -42,10 +51,14 @@ class UpdateError(Exception):
     """A problem to report in one line."""
 
 
-def github_api(path: str, *, authenticate: bool = True) -> dict[str, Any]:
-    """GET ``path`` from the GitHub REST API, with GITHUB_TOKEN if it's set and ``authenticate``."""
+class AllowListError(UpdateError):
+    """The GitHub API refused GITHUB_TOKEN, because the repo's org has an IP allow list that this IP isn't on."""
+
+
+def github_api(path: str) -> dict[str, Any]:
+    """GET ``path`` from the GitHub REST API, with GITHUB_TOKEN if it's set."""
     headers: dict[str, str] = {"Accept": "application/vnd.github+json"}
-    token: str | None = os.environ.get("GITHUB_TOKEN") if authenticate else None
+    token: str | None = os.environ.get("GITHUB_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
     try:
@@ -54,12 +67,9 @@ def github_api(path: str, *, authenticate: bool = True) -> dict[str, Any]:
             return json.load(response)
     except urllib.error.HTTPError as e:
         error: str = f"GitHub API {path}: {e.code} {e.reason}{why(e)}"
-        # An org with an IP allow list (aquasecurity, for trivy) refuses a token from an IP
-        # not on its list, such as a GitHub runner's, even for a public repo; it doesn't
-        # refuse a request without one (https://github.com/aquasecurity/trivy/issues/10567).
         if token and e.code == HTTPStatus.FORBIDDEN and "IP allow list" in error:
-            sys.stderr.write(f"*** {error}; retrying without GITHUB_TOKEN\n")
-            return github_api(path, authenticate=False)
+            msg: str = f"{error}; run it without GITHUB_TOKEN"
+            raise AllowListError(msg) from e
         raise UpdateError(error) from e
     except urllib.error.URLError as e:
         msg: str = f"GitHub API {path}: {e.reason}"
@@ -108,19 +118,47 @@ def is_past_cooldown(release: dict[str, Any], now: dt.datetime) -> bool:
     return now - released_at(release) >= COOLDOWN
 
 
-def fetch_text(path: str) -> str:
-    """GET a release asset, by its URL after https://github.com/, as text."""
+def fetch(path: str) -> tuple[str, str]:
+    """GET a page or release asset, by its URL after https://github.com/, following redirects; return the URL it ended at, and its text."""
     url: str = f"https://github.com/{path}"  # for messages
     try:
         # The URL is written out here, not taken from url, so ruff's S310 can see it's https; bandit's B310 can't.
         with urllib.request.urlopen(f"https://github.com/{path}", timeout=API_TIMEOUT_SECONDS) as response:  # nosec B310
-            return response.read().decode()
+            return response.geturl(), response.read().decode()
     except urllib.error.HTTPError as e:
         msg: str = f"{url}: {e.code} {e.reason}"
         raise UpdateError(msg) from e
     except urllib.error.URLError as e:
         msg: str = f"{url}: {e.reason}"
         raise UpdateError(msg) from e
+
+
+def fetch_text(path: str) -> str:
+    """GET a release asset, by its URL after https://github.com/, as text."""
+    return fetch(path)[1]
+
+
+def latest_release_from_web(repo: str) -> dict[str, Any]:
+    """Return ``repo``'s latest release, its tag_name and published_at, from github.com's pages rather than its API.
+
+    The tag is where /releases/latest redirects to. The date is the release's
+    <updated> in /releases.atom, which lists the 10 newest releases: it's when
+    the release was last changed, at or after it was published, so the
+    cooldown is never shorter than the API's would be.
+    """
+    url: str = fetch(f"{repo}/releases/latest")[0]
+    # under the repo's new name, if it's been renamed or moved
+    page: re.Match[str] | None = re.fullmatch(r"https://github\.com/[^/]+/[^/]+/releases/tag/([^/?#]+)", url)
+    if not page:
+        msg: str = f"https://github.com/{repo}/releases/latest went to {url}, not a release"
+        raise UpdateError(msg)
+    tag: str = urllib.parse.unquote(page[1])
+    for entry in re.findall(r"<entry>(.*?)</entry>", fetch_text(f"{repo}/releases.atom"), re.DOTALL):
+        found: re.Match[str] | None = re.search(r"<id>tag:github\.com,2008:Repository/\d+/(.+?)</id>.*?<updated>(.+?)</updated>", entry, re.DOTALL)
+        if found and found[1] == tag:
+            return {"tag_name": tag, "published_at": found[2]}
+    msg = f"https://github.com/{repo}/releases.atom has no release {tag}"
+    raise UpdateError(msg)
 
 
 def parse_checksums(text: str) -> dict[str, str]:
@@ -188,6 +226,10 @@ def update(pins: tomlkit.TOMLDocument, tool: str, version: str | None, now: dt.d
         release = github_api(f"repos/{pin['repo']}/releases/tags/{tag}")
 
     digests: dict[str, str] = platform_digests(pin, version, release)
+    # The nightly --check can't compare the license of a tool whose org has an IP allow list, so a bump does.
+    changed: str | None = license_change(tool, pin)
+    if changed:
+        raise UpdateError(changed)
     old_version: str = pin["version"]
     pin["version"] = version
     for tag, sha256 in digests.items():
@@ -206,6 +248,19 @@ def license_change(tool: str, pin: Mapping[str, Any]) -> str | None:
     return f"{tool}: GitHub reports the license {reported}, not {recorded}; review it, and update its license in {PINS_PATH.name}"
 
 
+def latest_and_license(tool: str, pin: Mapping[str, Any]) -> tuple[dict[str, Any], str | None, str]:
+    """Return ``tool``'s latest release, a line if its license changed, and a note to add to its report.
+
+    If the API refuses GITHUB_TOKEN because of the org's IP allow list, the
+    release comes from github.com's pages, and the license isn't compared.
+    """
+    try:
+        return github_api(f"repos/{pin['repo']}/releases/latest"), license_change(tool, pin), ""
+    except AllowListError:
+        note: str = "; license not compared, as the org's IP allow list refuses the API here, so bumping it compares it"
+        return latest_release_from_web(pin["repo"]), None, note
+
+
 def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False) -> list[str]:
     """Return a line for each tool whose latest release past the cooldown isn't the pinned one, whose license changed, or that couldn't be checked.
 
@@ -214,8 +269,10 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
     stale: list[str] = []
     for tool, pin in pins.items():
         try:
-            release: dict[str, Any] = github_api(f"repos/{pin['repo']}/releases/latest")
-            changed: str | None = license_change(tool, pin)
+            release: dict[str, Any]
+            changed: str | None
+            note: str
+            release, changed, note = latest_and_license(tool, pin)
         except UpdateError as e:
             # Check the other tools anyway, so one failure doesn't hide what they'd report.
             stale.append(f"{tool}: couldn't check: {e}")
@@ -236,7 +293,7 @@ def check(pins: tomlkit.TOMLDocument, now: dt.datetime, *, verbose: bool = False
         if changed:
             stale.append(changed)
         if verbose:
-            sys.stdout.write(f"{tool}: pinned {pin['version']}; latest {latest} ({released_at(release):%Y-%m-%d}): {status}\n")
+            sys.stdout.write(f"{tool}: pinned {pin['version']}; latest {latest} ({released_at(release):%Y-%m-%d}): {status}{note}\n")
     return stale
 
 

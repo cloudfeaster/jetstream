@@ -37,7 +37,7 @@ bin/update-binary.py <tool>             # its latest release past the cooldown
 bin/update-binary.py <tool> <version>   # a named version, even inside the cooldown
 ```
 
-It updates the version and every platform's SHA-256 in `binaries.toml`, after checking GitHub's digests against the checksums file the project publishes. Commit it as a `fix:`, so the bump is released.
+It updates the version and every platform's SHA-256 in `binaries.toml`, after checking GitHub's digests against the checksums file the project publishes, and that GitHub reports the license the pin records. For trivy, run it without `GITHUB_TOKEN`: its org's IP allow list refuses a token from an IP that isn't on it. Commit it as a `fix:`, so the bump is released.
 
 ## Keeping the Node tools current
 
@@ -80,7 +80,7 @@ Every tool jetstream installs is a development tool, so it may have any open-sou
 
 - **every Python package** that a pack's extra installs, with its dependencies, using its installed metadata: its SPDX license expression, or, if it has none, its license classifiers (`OPEN_SOURCE_CLASSIFIERS`);
 - **every Node package** in `src/jetstream/node/*/package-lock.json`;
-- **every binary** in `binaries.toml`, by its `license`. The `binary pins` workflow's `bin/update-binary.py --check` fails if GitHub reports a different license for the tool's repo;
+- **every binary** in `binaries.toml`, by its `license`. Bumping one with `bin/update-binary.py` fails if GitHub reports a different license for the tool's repo, and so does the `binary pins` workflow's `--check`, except for a tool whose org has an IP allow list (trivy's), which refuses the workflow's token: `--check` then reads the latest release from github.com's pages, and leaves the license to the bump;
 - **what's bundled inside a package**, under a license of its own, which no metadata shows. It's recorded by hand in `dev-tool-licenses.toml`'s `[bundled]`, such as the GPL ShellCheck binary in `shellcheck-py`'s wheels.
 
 When you add a tool, check what its wheels contain and record anything bundled. A license that isn't on the list fails until someone reviews it. If it's open source, add it to the list. A missing one, one that isn't an SPDX expression, or an AGPL one goes in `[reviewed]` instead, with a comment saying why it's allowed.
