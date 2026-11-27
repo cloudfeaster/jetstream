@@ -10,7 +10,7 @@ Each jetstream release holds the approved dev toolchain (lint and security tools
 
 jetstream ships as a Python package, `cloudfeaster-jetstream`, that a repo adds as a dev dependency pinned to a release tag. A standard `uv sync` installs it, and every tool it pins, into the repo's `.venv`, and `jetstream sync` writes the configuration, so bumping that one pin moves the whole toolchain and its configuration together.
 
-> **Status:** early development. The `jetstream` command and the packs aren't usable yet. The plan is [issue #1](https://github.com/cloudfeaster/jetstream/issues/1).
+> **Status:** stable since v1.0.0. Releases follow [semantic versioning](https://semver.org/), and the [changelog](CHANGELOG.md) lists what each one changes.
 
 ## The strict model
 
@@ -22,13 +22,13 @@ jetstream is deliberately strict:
 
 ## Packs
 
-A repo selects packs in `[tool.jetstream] packs`:
+A repo selects packs in `[tool.jetstream] packs`. Each pack's name links to its docs:
 
 | Pack | For |
 |---|---|
-| `core` | every repo: YAML, JSON, Markdown, shell, GitHub Actions, secrets, CI |
-| `python` | Python packages: ruff, ty, bandit, pip-audit, a product license check and more |
-| `website` | Astro and Starlight sites on GitHub Pages |
+| [`core`](src/jetstream/docs/core/) | every repo: YAML, JSON, Markdown, shell, GitHub Actions, secrets, CI |
+| [`python`](src/jetstream/docs/python/python.md) | Python packages: ruff, ty, bandit, pip-audit, a product license check and more |
+| [`website`](src/jetstream/docs/website/website.md) | Astro sites on GitHub Pages |
 
 ## Supported platforms
 
