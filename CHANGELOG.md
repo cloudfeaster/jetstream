@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.0.0](https://github.com/cloudfeaster/jetstream/compare/v0.17.0...v1.0.0) (2026-11-27)
+
+
+### Bug Fixes
+
+* allow assert only in tests, and read a workflow's on: as a key ([#157](https://github.com/cloudfeaster/jetstream/issues/157)) ([c2b9371](https://github.com/cloudfeaster/jetstream/commit/c2b937127defce29cdd260e29892ee152b94d0b1))
+* download d2 from d2lang/d2, where its repo moved ([#149](https://github.com/cloudfeaster/jetstream/issues/149)) ([76b5969](https://github.com/cloudfeaster/jetstream/commit/76b596903c9bc11de2043d6edc154c4629a3cd6a))
+* escape every regex metacharacter in the site lychee maps to dist/ ([#152](https://github.com/cloudfeaster/jetstream/issues/152)) ([b799113](https://github.com/cloudfeaster/jetstream/commit/b79911321af9498714d84e94cb31dafd70ca7596))
+* resolve a relative link as the deployed site would, in lychee ([#155](https://github.com/cloudfeaster/jetstream/issues/155)) ([3f2cffa](https://github.com/cloudfeaster/jetstream/commit/3f2cffa7f42e765c88845265cfad7d82fc48d0f9))
+
+
+### Documentation
+
+* attach a code security configuration to one repo only ([#150](https://github.com/cloudfeaster/jetstream/issues/150)) ([8b26088](https://github.com/cloudfeaster/jetstream/commit/8b260880de8e20143963c2eab0cf740b7057cd92))
+* describe the tag rulesets as part of the org's setup ([#159](https://github.com/cloudfeaster/jetstream/issues/159)) ([c7a8ccf](https://github.com/cloudfeaster/jetstream/commit/c7a8ccff5f0a1715d8e7657ee5244496f226ba38))
+* set up a site's custom domain, DNS and HTTPS on Pages ([#151](https://github.com/cloudfeaster/jetstream/issues/151)) ([cd1cc54](https://github.com/cloudfeaster/jetstream/commit/cd1cc54579f75281ef56ce73faabd9106486bdb5))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([#161](https://github.com/cloudfeaster/jetstream/issues/161)) ([463f915](https://github.com/cloudfeaster/jetstream/commit/463f9150d0ec5d41adab93c6b0f51314249f3886))
+
 ## [0.17.0](https://github.com/cloudfeaster/jetstream/compare/v0.16.0...v0.17.0) (2026-11-26)
 
 
