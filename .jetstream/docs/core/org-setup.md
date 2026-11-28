@@ -45,6 +45,7 @@ In **Settings → Actions → General**:
 - **Allow only selected actions:** actions written by GitHub, actions in the org's own repos, and an allowlist of third-party actions. Leave out actions by verified creators, so a third-party action only runs if someone added it on purpose. jetstream's workflows use one third-party action, `astral-sh/setup-uv`; the rest are GitHub's.
 - **Require actions to be pinned to a full commit SHA**, so an action's owner, or anyone who compromises them, can't repoint a tag at different code ([github-actions.md](github-actions.md)).
 - **Workflow permissions: Read repository contents and packages permissions**, and **Allow GitHub Actions to create and approve pull requests** off. A workflow that leaves out its `permissions:` block then gets a token that can't push or approve its own changes. jetstream's workflows set `permissions: {}` and grant each job what it needs, so this changes nothing for them.
+- **Runners: no repository-level self-hosted runners.** Otherwise any repo admin can add one. A self-hosted runner runs any job that asks for its labels, on a machine the org doesn't control, which sees the job's code, secrets and token. It isn't thrown away after each job, so one bad job can leave something behind for the next, and on a public repo it can be made to run a fork's pull request code. jetstream's workflows run on GitHub-hosted runners. If you do need one, have an owner add it as an org runner, in a runner group limited to the private repos that need it, with public repositories not allowed.
 
 ```bash
 gh api -X PUT orgs/<org>/actions/permissions \
@@ -53,6 +54,7 @@ gh api -X PUT orgs/<org>/actions/permissions/selected-actions --input - <<< \
   '{"github_owned_allowed": true, "verified_allowed": false, "patterns_allowed": ["astral-sh/setup-uv@*"]}'
 gh api -X PUT orgs/<org>/actions/permissions/workflow \
   -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
+gh api -X PUT orgs/<org>/actions/permissions/self-hosted-runners -f enabled_repositories=none
 ```
 
 Run them in that order: the allowlist is only accepted once `allowed_actions` is `selected`. `patterns_allowed` replaces the whole list, so send every entry each time. Entries end in `@*` because workflows already pin SHAs: allowlisting exact SHAs would block every Dependabot bump.
