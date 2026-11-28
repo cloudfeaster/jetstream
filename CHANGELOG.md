@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1](https://github.com/cloudfeaster/jetstream/compare/v1.0.0...v1.0.1) (2026-11-28)
+
+
+### Documentation
+
+* mark jetstream stable and link each pack to its docs ([#167](https://github.com/cloudfeaster/jetstream/issues/167)) ([7400658](https://github.com/cloudfeaster/jetstream/commit/74006587cf311448596993f43aa685255b8bbe34))
+* recommend no repo-level self-hosted runners in org setup ([#170](https://github.com/cloudfeaster/jetstream/issues/170)) ([528fbce](https://github.com/cloudfeaster/jetstream/commit/528fbce3b73c23339eca7f10f628829db0c4813e))
+* spell out the custom-domain steps for a website on GitHub Pages ([#169](https://github.com/cloudfeaster/jetstream/issues/169)) ([49a7660](https://github.com/cloudfeaster/jetstream/commit/49a76604e9ed6208b1e7acf7cbf107927d35ba82))
+
 ## [1.0.0](https://github.com/cloudfeaster/jetstream/compare/v0.17.0...v1.0.0) (2026-11-27)
 
 
