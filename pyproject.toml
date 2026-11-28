@@ -34,7 +34,7 @@ python = [
     "deptry==0.25.1",
     "pip-audit==2.10.1",
     "pyscn==1.33.2",
-    "ruff==0.17.5",
+    "ruff==0.17.6",
     "ty==0.0.107",
 ]
 website = []
